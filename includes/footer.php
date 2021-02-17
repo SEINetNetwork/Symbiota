@@ -1,13 +1,43 @@
-    	</td>
+<table>
+	<tr>
+		<td class="footer1" colspan="5">
+			<div style="vertical-align:middle">
+				<div style="width:300px;padding:20px 20px;display:table-cell;vertical-align:middle;">
+					<a href="https://www.chicagobotanic.org" target="_blank">
+					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/cbglogo.jpg" style="width:100px" />
+					</a>
+				</div>
+				<div style="width:300px;padding:0px 20px;display:table-cell;vertical-align:middle;">
+					<a href="https://www.botanicgardens.org" target="_blank">
+					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/denverlogo.jpg" style="width:100px" /></a>
+				</div>
+				<div style="width:300px;padding:0px 20px;display:table-cell;vertical-align:middle;">
+					<a href="https://www.dbg.org" target="_blank">
+					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/desertlogo.jpg" style="width:100px" /></a>
+				</div>
+				<div style="width:300px;padding:0px 20px;display:table-cell;vertical-align:middle;">
+					<a href="https://www.nybg.org" target="_blank">
+					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/nybglogo.png" style="width:100px" /></a>
+				</div>
+				<div style="width:300px;padding:0px 20px;display:table-cell;vertical-align:middle;">
+					<a href="https://www.selby.org" target="_blank">
+					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/selbygardens.png" style="width:100px" /></a>
+				</div>
+			</div>
+		</td>
 	</tr>
 	<tr>
-		<td id="footer" colspan="3">
-			<p>
-				<a href="https://www.nsf.gov" target="_blank"><img src="<?php echo $CLIENT_ROOT; ?>/images/layout/logo_nsf.gif" style="width:70px" /></a>
-				<a href="http://idigbio.org" target="_blank" title="iDigBio"><img src="<?php echo $CLIENT_ROOT; ?>/images/layout/logo_idig.png" style="width:150px" /></a>
-				<a href="https://biokic.asu.edu" target="_blank" title="Biodiversity Knowledge Integration Center"><img src="<?php echo $CLIENT_ROOT; ?>/images/layout/logo-asu-biokic.png" style="width:180px" /></a>
-			</p>
-			<div style="text-align:center;margin-bottom:15px">This project made possible by National Science Foundation Awards: <a href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=" target="_blank">#------</a></div>
+		<td class="footer2" colspan="2">
+			<div style="width:auto;margin-left:auto;margin-right:auto;margin-bottom:15px;display:table;">
+				<div style="width:300px;display:table-cell;vertical-align:middle;">
+					<a href="https://www.imls.gov" target="_blank">
+					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/imlslogo.jpg" style="width:100px" /></a>
+				</div>
+				<div style="width:300px;display:table-cell;vertical-align:middle;">
+					<a href="https://biokic.asu.edu" target="_blank">
+					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/logo-asu-biokic.jpg" style="width:100px" /></a>
+				</div>
+			</div>
 		</td>
 	</tr>
 </table>

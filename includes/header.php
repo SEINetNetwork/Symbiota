@@ -9,14 +9,11 @@ if (top.frames.length!=0)
 		<td id="header" colspan="3">
 			<div style="clear:both; width:100%; height:170px; border-bottom:1px solid #000000;">
 				<div style="float:left">
-					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/left_logo.jpg" style="margin:0px 30px;width:130px" />
+					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/left_logo.jpg" style="margin:0px 30px;width:230px" />
 				</div>
 				<div style="margin-left: 40px; color: #fff; font-family: 'Mate', serif; letter-spacing: 1px; text-shadow: 0 0 7px rgba(0,0,0,0.5);">
 					<div style="margin-top:30px; font-size:60px; line-height:48px;">
-						First Level Title
-					</div>
-					<div style="margin-top:20px; font-size:35px; font-style: italic">
-						Second Level Title
+						North American EcoFloras
 					</div>
 				</div>
 			</div>
@@ -67,36 +64,66 @@ if (top.frames.length!=0)
 								<a href="<?php echo $CLIENT_ROOT; ?>/collections/index.php" >Search Collections</a>
 							</li>
 							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/imagelib/search.php" >Search Images</a>
+							</li>
+							<li>
 								<a href="<?php echo $CLIENT_ROOT; ?>/collections/map/index.php" target="_blank">Map Search</a>
 							</li>
 						</ul>
 					</li>
 					<li>
-						<a href="#" >Images</a>
+						<a href="#" >Chicago Botanical Garden</a>
 						<ul>
 							<li>
-								<a href="<?php echo $CLIENT_ROOT; ?>/imagelib/index.php" >Image Browser</a>
+								<a href"#" >Project Information</a>
 							</li>
 							<li>
-								<a href="<?php echo $CLIENT_ROOT; ?>/imagelib/search.php" >Search Images</a>
+								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=140" >Checklists</a>
+							</li>
+						</ul>						
+					</li>
+					<li> 
+						<a href="#" >Denver Botanical Garden</a>
+						<ul>
+							<li>
+								<a href"#" >Project Information</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=141" >Checklists</a>
+							</li>
+						</ul>
+					</li>	
+					<li>
+						<a href="#" >Desert Botanical Garden</a>
+						<ul>
+							<li>
+								<a href"#" >Project Information</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=139" >Checklists</a>
 							</li>
 						</ul>
 					</li>
 					<li>
-						<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=140" >Chicago BG</a>
-					</li>
+						<a href="#" >NY Botanical Garden</a>
+						<ul>
+							<li>
+								<a href"#" >Project Information</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=115" >Checklists</a>
+							</li>
+						</ul>
 					<li>
-						<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=141" >Denver BG</a>
-					</li>
-					<li>
-						<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=139" >Desert BG</a>
-					</li>
-					<li>
-						<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=115" >NYBG</a>
-					</li>
-					<li>
-						<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=138" >Selby BG</a>
-					</li>
+						<a href="#" >Selby Botanical Garden</a>
+						<ul>
+							<li>
+								<a href"#" >Project Information</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=138" >Checklists</a>
+							</li>
+						</ul>
 					<li>
 						<a href="#" >Interactive Tools</a>
 						<ul>
@@ -107,6 +134,9 @@ if (top.frames.length!=0)
 								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=key" >Dynamic Key</a>
 							</li>
 						</ul>
+					</li>
+					<li>
+						<a href="#" >Resources</a>
 					</li>
 				</ul>
 			</div>
