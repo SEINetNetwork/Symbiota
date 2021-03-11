@@ -7,16 +7,11 @@ if (top.frames.length!=0)
 <table id="maintable" cellspacing="0">
 	<tr>
 		<td id="header" colspan="3">
-			<div style="clear:both; width:100%; height:170px; border-bottom:1px solid #000000;">
-				<div style="float:left">
-					<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/left_logo.jpg" style="margin:0px 30px;width:230px" />
-				</div>
 				<div style="margin-left: 40px; color: #fff; font-family: 'Mate', serif; letter-spacing: 1px; text-shadow: 0 0 7px rgba(0,0,0,0.5);">
 					<div style="margin-top:30px; font-size:60px; line-height:48px;">
-						North American EcoFloras
+						the North American EcoFloras Portal
 					</div>
 				</div>
-			</div>
 			<div id="top_navbar">
 				<div id="right_navbarlinks">
 					<?php
@@ -72,24 +67,36 @@ if (top.frames.length!=0)
 						</ul>
 					</li>
 					<li>
-						<a href="#" >Chicago Botanical Garden</a>
+						<a href="#" >Chicago Botanic Garden</a>
 						<ul>
 							<li>
-								<a href"#" >Project Information</a>
+								<a href="<?php echo $CLIENT_ROOT; ?>/misc/CBG_about.php" >Project Information</a>
 							</li>
 							<li>
 								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=140" >Checklists</a>
 							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=checklist&lat=41.89&long=-87.67&zoom=9" >Create a Checklist</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=key&lat=41.89&long=-87.67&zoom=9" >Dynamic Key</a>
+							</li>
 						</ul>						
 					</li>
 					<li> 
-						<a href="#" >Denver Botanical Garden</a>
+						<a href="#" >Denver Botanic Gardens</a>
 						<ul>
 							<li>
-								<a href"#" >Project Information</a>
+								<a href="<?php echo $CLIENT_ROOT; ?>/misc/DenBG_about.php" >Project Information</a>
 							</li>
 							<li>
 								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=141" >Checklists</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=checklist&lat=39.72&long=-104.96&zoom=9" >Create a Checklist</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=key&lat=39.72&long=-104.96&zoom=9" >Dynamic Key</a>
 							</li>
 						</ul>
 					</li>	
@@ -97,10 +104,16 @@ if (top.frames.length!=0)
 						<a href="#" >Desert Botanical Garden</a>
 						<ul>
 							<li>
-								<a href"#" >Project Information</a>
+								<a href="<?php echo $CLIENT_ROOT; ?>/misc/DesBG_about.php" >Project Information</a>
 							</li>
 							<li>
 								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=139" >Checklists</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=checklist&lat=33.51&long=-112.08&zoom=9" >Create a Checklist</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=key&lat=33.51&long=-112.08&zoom=9" >Dynamic Key</a>
 							</li>
 						</ul>
 					</li>
@@ -108,36 +121,34 @@ if (top.frames.length!=0)
 						<a href="#" >NY Botanical Garden</a>
 						<ul>
 							<li>
-								<a href"#" >Project Information</a>
+								<a href="<?php echo $CLIENT_ROOT; ?>/misc/NYBG_about.php" >Project Information</a>
 							</li>
 							<li>
 								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=115" >Checklists</a>
 							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=checklist&lat=40.75&long=-73.99&zoom=10" >Create a Checklist</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=key&lat=40.75&long=-73.99&zoom=10" >Dynamic Key</a>
+							</li>
 						</ul>
 					<li>
-						<a href="#" >Selby Botanical Garden</a>
+						<a href="#" >Selby Botanical Gardens</a>
 						<ul>
 							<li>
-								<a href"#" >Project Information</a>
+								<a href="<?php echo $CLIENT_ROOT; ?>/misc/SBG_about.php" >Project Information</a>
 							</li>
 							<li>
 								<a href="<?php echo $CLIENT_ROOT; ?>/projects/index.php?pid=138" >Checklists</a>
 							</li>
-						</ul>
-					<li>
-						<a href="#" >Interactive Tools</a>
-						<ul>
 							<li>
-								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=checklist" >Dynamic Checklist</a>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=checklist&lat=27.32&long=-82.34&zoom=9" >Create a Checklist</a>
 							</li>
 							<li>
-								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=key" >Dynamic Key</a>
+								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=key&lat=27.32&long=-82.34&zoom=9" >Dynamic Key</a>
 							</li>
 						</ul>
-					</li>
-					<li>
-						<a href="#" >Resources</a>
-					</li>
 				</ul>
 			</div>
 		</td>
