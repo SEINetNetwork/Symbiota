@@ -8,8 +8,8 @@ if (top.frames.length!=0)
 	<tr>
 		<td id="header" colspan="3">
 				<div style="margin-left: 40px; color: #fff; font-family: 'Mate', serif; letter-spacing: 1px; text-shadow: 0 0 7px rgba(0,0,0,0.5);">
-					<div style="margin-top:30px; font-size:60px; line-height:48px;">
-						the North American EcoFloras Portal
+					<div style="display: block; margin-left: auto; margin-right:auto;width: 65%;">
+						<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/CitSci_Thumbnail_Final_C.png"/>
 					</div>
 				</div>
 			<div id="top_navbar">
@@ -134,7 +134,7 @@ if (top.frames.length!=0)
 							</li>
 						</ul>
 					<li>
-						<a href="#" >Selby Botanical Gardens</a>
+						<a href="#" >Marie Selby Botanical Gardens</a>
 						<ul>
 							<li>
 								<a href="<?php echo $CLIENT_ROOT; ?>/misc/SBG_about.php" >Project Information</a>
