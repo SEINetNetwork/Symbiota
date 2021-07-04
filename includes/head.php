@@ -9,6 +9,7 @@
  */
 
 //$CUSTOM_CSS_PATH = '/css/symb/custom';
+?>
 <link href="<?php echo $CLIENT_ROOT; ?>/css/jquery-ui.css" type="text/css" rel="stylesheet">
 <link href="<?php echo $CLIENT_ROOT; ?>/css/base.css?ver=1" type="text/css" rel="stylesheet">
 <link href="<?php echo $CLIENT_ROOT; ?>/css/symb/main.css?ver=1" type="text/css" rel="stylesheet">
