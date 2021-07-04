@@ -10,7 +10,7 @@ header("Content-Type: text/html; charset=".$CHARSET);
 		include_once($SERVER_ROOT.'/includes/head.php');
 		?>
 	</head>
-	<body>
+	<body style="background-color:#FFFFFF">
 		<?php
 		$displayLeftMenu = false;
 		include($SERVER_ROOT.'/includes/header.php');

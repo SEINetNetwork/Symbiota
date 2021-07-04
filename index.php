@@ -93,12 +93,19 @@ header("Content-Type: text/html; charset=".$CHARSET);
 		
 	</style>
 </head>
-<body>
+<body style="background-color:#FFFFFF">
 	<?php
 	include($SERVER_ROOT.'/includes/header.php');
 	?>
 	<!-- This is inner text! -->
-	<div id="innertext">
+	<div id="innertext" style="padding-top:0px">
+		<section >
+			<div class="hero-bg">
+				<img style="width:100%" src="<?php echo $CLIENT_ROOT; ?>/images/layout/EcoFlorasNA_banner.png"/>
+			</div>
+		</section>
+			
+			
 		<div style="text-align:center; margin-left: 150px; margin-right:150px;">
 			<h1> Welcome to the EcoFloras of North America! </h1>
 			<hr>
@@ -113,7 +120,7 @@ header("Content-Type: text/html; charset=".$CHARSET);
 		</div>
 		<div style="text-align:center">
 		<h2>Monthly EcoQuest Challenges</h2>
-		<h3>APRIL 2021</h3>
+		<h3>JUNE 2021</h3>
 		</div>
 		<div id="container5">
 			<div id="container4">
@@ -121,35 +128,34 @@ header("Content-Type: text/html; charset=".$CHARSET);
 					<div id="container2">
 						<div id="container1">
 							<div id="col1" style="text-align:center">
-							<h4><u>New York City EcoFlora</u></h4>
-							<h2>CHECK FOR CHERRY</h2>
-							<p>How many flowering cherry trees (<i>Prunus</i> spp.) can you find?</p>
-							<p><a href="https://www.nybg.org/content/uploads/2021/03/NYCEcoFlora_Prunus.pdf">Guide to <i>Prunus</i> in NYC</a></p>
-							<p><a href="https://www.inaturalist.org/projects/check-for-cherry">Upload your observations to iNaturalist</a></p>
+							<h3><u>New York City EcoFlora</u></h3>
+							<h2>FERN FORAY</h2>
+							<p>How many species of fern can you find? Is Japanese Painted Fern naturalized in NYC?</p>
+							<p><a href="https://www.inaturalist.org/projects/fern-foray">Upload your observations to iNaturalist</a></p>
 							</div>
 							<div id="col2" style="text-align:center">
-							<h4><u>Chicago EcoFlora</u></h4>
-							<h2>BLUEBELLS RING IN SPRING / BEGONE BRADFORD PEAR</h2>
-							<p>How many native Virginia bluebells (<i>Mertensia virginica</i>) and invasive Bradford pear (<i>Pyrus calleryana</i>) can you find?</p>
-							<p><a href="https://budburst.org/april-ecoquest">Upload your observations to Budburst</a></p>
+							<h3><u>Chicago EcoFlora</u></h3>
+							<h2>PUMPED FOR PURPLE FLOWERS / SEARCH OUT SWALLOWWORTS</h2>
+							<p>How many native purple wildflowers (spiderwort [<i>Tradescantia ohiensis</i>], eastern purple coneflower [<i>Echinacea purpurea</i>]) and invasive swallowworts (<i>Vincetoxicum</i> sp.) can you find?</p>
+							<p><a href="https://budburst.org/june-ecoquest">Upload your observations to Budburst</a></p>
 							</div>
 							<div id="col3" style="text-align:center">
-							<h4><u>Sarasota-Manatee EcoFlora</u></h4>
-							<h2>PLANTS THAT POP!</h2>
-							<p>How many ballistochorous plants (rapid ejection of seeds by explosive fruit dehiscence) can you find?</p>
-							<p><a href="https://www.inaturalist.org/projects/plants-that-pop-sarasota-manatee-ecoflora-april-ecoquest">Upload your observations to iNaturalist</a></p>
+							<h3><u>Sarasota-Manatee EcoFlora</u></h3>
+							<h2>LEAPING INTO WATERLILIES</h2>
+							<p>There are 8 species of native lilies and lotuses found in our counties. How many can you find?</p>
+							<p><a href="https://www.inaturalist.org/projects/leaping-into-lilies-june-sarasota-manatee-ecoflora-ecoquest">Upload your observations to iNaturalist</a></p>
 							</div>
 							<div id="col4" style="text-align:center">
-							<h4><u>Metro Phoenix EcoFlora</u></h4>
-							<h2>LOOKIN' SHARP</h2>
-							<p>How many cacti (Family Cactaceae) can you find?</p>
-							<p><a href="https://www.inaturalist.org/projects/lookin-sharp">Upload your observations to iNaturalist</a></p>
+							<h3><u>Metro Phoenix EcoFlora</u></h3>
+							<h2>THE NIGHT SHIFT</h2>
+							<p>How many nocturnal pollinators can you observe?</p>
+							<p><a href="https://www.inaturalist.org/projects/the-night-shift">Upload your observations to iNaturalist</a></p>
 							</div>
 							<div id="col5" style="text-align:center">
-							<h4><u>Denver EcoFlora</u></h4>
-							<h2>PASQUE FLOWERS</h2>
-							<p>How many pasque flowers (<i>Pulsatilla nuttalliana</i>) can you find?</p>
-							<p><a href="https://www.inaturalist.org/projects/denver-ecoquest-april-2021-pasque-flowers">Upload your observations to iNaturalist</a></p>
+							<h3><u>Denver EcoFlora</u></h3>
+							<h2>HEUCHERA HUNT</h2>
+							<p>There are 4 species of <i>Heuchera</i> recorded from the Denver metro area, which commonly grow on rock faces. How many can you find?</p>
+							<p><a href="https://www.inaturalist.org/projects/june-ecoquest-heuchera-hunt">Upload your observations to iNaturalist</a></p>
 							</div>
 						</div>
 					</div>

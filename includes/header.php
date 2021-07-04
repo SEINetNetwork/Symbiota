@@ -4,16 +4,22 @@ if (top.frames.length!=0)
   top.location=self.document.location;
 // -->
 </script>
-<table id="maintable" cellspacing="0">
-	<tr>
-		<td id="header" colspan="3">
-				<div style="margin-left: 40px; color: #fff; font-family: 'Mate', serif; letter-spacing: 1px; text-shadow: 0 0 7px rgba(0,0,0,0.5);">
-					<div style="display: block; margin-left: auto; margin-right:auto;width: 65%;">
-						<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/CitSci_Thumbnail_Final_C.png"/>
-					</div>
-				</div>
-			<div id="top_navbar">
-				<div id="right_navbarlinks">
+<header >
+	<div>
+		<div class="container" style="background-color:#031a12; color:#FFFFFF">
+			<img style="margin-top:5px;margin-bottom:5px;width:300px;" src="<?php echo $CLIENT_ROOT; ?>/images/layout/EcoFlorasNA_Banner_small.png"/>
+			<div id="quicksearchdiv" style="float:right">
+				<!-- -------------------------QUICK SEARCH SETTINGS--------------------------------------- -->
+				<form name="quicksearch" id="quicksearch" action="/portal/taxa/index.php" method="get" onsubmit="return verifyQuickSearch(this);">
+					<div id="quicksearchtext">Search Taxon</div>
+					<input id="taxa" type="text" name="taxon" style="width: 225px">
+					<button name="formsubmit" id="quicksearchbutton" type="submit" value="Search Terms" style="margin-top: 2px">Search taxon</button>
+				</form>
+			</div>
+		</div>
+	</div>
+	<div id="top_navbar">
+		<div id="right_navbarlinks">
 					<?php
 					if($USER_DISPLAY_NAME){
 						?>
