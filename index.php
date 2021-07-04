@@ -101,7 +101,7 @@ header("Content-Type: text/html; charset=".$CHARSET);
 	<div id="innertext" style="padding-top:0px">
 		<section >
 			<div class="hero-bg">
-				<img style="width:100%" src="<?php echo $CLIENT_ROOT; ?>/images/layout/EcoFlorasNA_banner.png"/>
+				<img style="width:100%" src="<?php echo $CLIENT_ROOT; ?>/images/layout/EcoFlorasNA_Banner.png"/>
 			</div>
 		</section>
 			
