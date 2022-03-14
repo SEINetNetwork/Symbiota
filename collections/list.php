@@ -1,6 +1,7 @@
 <?php
 include_once('../config/symbini.php');
-include_once($SERVER_ROOT.'/content/lang/collections/list.'.$LANG_TAG.'.php');
+if($LANG_TAG != 'en' && file_exists($SERVER_ROOT.'/content/lang/collections/list.'.$LANG_TAG.'.php')) include_once($SERVER_ROOT.'/content/lang/collections/list.'.$LANG_TAG.'.php');
+else include_once($SERVER_ROOT.'/content/lang/collections/list.en.php');
 include_once($SERVER_ROOT.'/classes/OccurrenceListManager.php');
 header("Content-Type: text/html; charset=".$CHARSET);
 
@@ -182,7 +183,7 @@ $occurArr = $collManager->getSpecimenMap($pageNumber,$cntPerPage);
 						while($collElem = array_shift($collSearchArr)){
 							$collSearchStr .= $collElem.'; ';
 							if($cnt==10 && $collSearchArr){
-								$collSearchStr = trim($collSearchStr,'; ').'<span class="moreinst">... (<a href="#" onclick="$(\'.moreinst\').toggle();return false;">'.(isset($LANG['SHOW_ALL'])?$LANG['SHOW_ALL']:'show all').'</a>)</span><span class="moreinst" style="display:none">; ';
+								$collSearchStr = trim($collSearchStr,'; ').'<span class="inst-span">... (<a href="#" onclick="$(\'.inst-span\').toggle();return false;">'.$LANG['SHOW_ALL'].'</a>)</span><span class="inst-span" style="display:none">; ';
 							}
 							$cnt++;
 						}
@@ -190,6 +191,7 @@ $occurArr = $collManager->getSpecimenMap($pageNumber,$cntPerPage);
 					}
 					echo '<div><b>'.$LANG['DATASET'].':</b> '.$collSearchStr.'</div>';
 					if($taxaSearchStr = $collManager->getTaxaSearchStr()){
+						if(strlen($taxaSearchStr)>300) $taxaSearchStr = substr($taxaSearchStr,0,300).'<span class="taxa-span">... (<a href="#" onclick="$(\'.taxa-span\').toggle();return false;">'.$LANG['SHOW_ALL'].'</a>)</span><span class="taxa-span" style="display:none;">'.substr($taxaSearchStr,300).'</span>';
 						echo '<div><b>'.$LANG['TAXA'].':</b> '.$taxaSearchStr.'</div>';
 					}
 					if($localSearchStr = $collManager->getLocalSearchStr()){
