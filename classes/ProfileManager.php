@@ -1,10 +1,10 @@
 <?php
-include_once($SERVER_ROOT.'/config/dbconnection.php');
+include_once('Manager.php');
 include_once('Person.php');
 include_once('Encryption.php');
 @include_once 'Mail.php';
 
-class ProfileManager{
+class ProfileManager extends Manager{
 
 	private $rememberMe = false;
 	private $uid;
@@ -12,16 +12,14 @@ class ProfileManager{
 	private $displayName;
 	private $token;
 	private $authSql;
-	private $conn;
 	private $errorStr;
 
 	public function __construct($connType = 'readonly'){
-		$this->conn = MySQLiConnectionFactory::getCon($connType);
+		parent::__construct(null, $connType);
 	}
 
  	public function __destruct(){
-		if(!($this->conn === null)) $this->conn->close();
-		$this->conn = null;
+ 		parent::__destruct();
 	}
 
 	private function resetConnection(){
@@ -29,11 +27,10 @@ class ProfileManager{
 	}
 
 	public function reset(){
-		$domainName = $_SERVER['SERVER_NAME'];
-		if(!$domainName) $domainName = $_SERVER['HTTP_HOST'];
+		$domainName = filter_var($_SERVER['SERVER_NAME'], FILTER_SANITIZE_URL);
 		if($domainName == 'localhost') $domainName = false;
-		setcookie("SymbiotaCrumb", "", time() - 3600, ($GLOBALS["CLIENT_ROOT"]?$GLOBALS["CLIENT_ROOT"]:'/'),$domainName,false,true);
-		setcookie("SymbiotaCrumb", "", time() - 3600, ($GLOBALS["CLIENT_ROOT"]?$GLOBALS["CLIENT_ROOT"]:'/'));
+		setcookie('SymbiotaCrumb', '', time() - 3600, ($GLOBALS['CLIENT_ROOT']?$GLOBALS['CLIENT_ROOT']:'/'), $domainName, false, true);
+		setcookie('SymbiotaCrumb', '', time() - 3600, ($GLOBALS['CLIENT_ROOT']?$GLOBALS['CLIENT_ROOT']:'/'));
 		unset($_SESSION['userrights']);
 		unset($_SESSION['userparams']);
 	}
@@ -79,16 +76,15 @@ class ProfileManager{
 			$tokenArr[] = $this->userName;
 			$tokenArr[] = $this->token;
 			$cookieExpire = time() + 60 * 60 * 24 * 30;
-			$domainName = $_SERVER['SERVER_NAME'];
-			if (!$domainName) $domainName = $_SERVER['HTTP_HOST'];
+			$domainName = filter_var($_SERVER['SERVER_NAME'], FILTER_SANITIZE_URL);
 			if ($domainName == 'localhost') $domainName = false;
-			setcookie("SymbiotaCrumb", Encryption::encrypt(json_encode($tokenArr)), $cookieExpire, ($GLOBALS["CLIENT_ROOT"] ? $GLOBALS["CLIENT_ROOT"] : '/'), $domainName, false, true);
+			setcookie('SymbiotaCrumb', Encryption::encrypt(json_encode($tokenArr)), $cookieExpire, ($GLOBALS['CLIENT_ROOT'] ? $GLOBALS['CLIENT_ROOT'] : '/'), $domainName, false, true);
 		}
 	}
 
 	public function getPerson(){
 		$sqlStr = 'SELECT u.uid, u.firstname, u.lastname, u.title, u.institution, u.department, u.address, u.city, u.state, u.zip, u.country, u.phone, u.email, '.
-			'u.url, u.guid, u.biography, u.ispublic, u.notes, ul.username, ul.lastlogindate '.
+			'u.url, u.guid, u.notes, ul.username, ul.lastlogindate '.
 			'FROM users u LEFT JOIN userlogin ul ON u.uid = ul.uid '.
 			'WHERE (u.uid = '.$this->uid.')';
 		$person = new Person();
@@ -202,16 +198,18 @@ class ProfileManager{
 
 			if($uid){
 				$subject = 'RE: Password reset';
-				$serverPath = 'http://';
-				if((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443) $serverPath = 'https://';
-				$serverPath .= $_SERVER['SERVER_NAME'].$GLOBALS['CLIENT_ROOT'];
-				$body = 'Your '.$GLOBALS["DEFAULT_TITLE"].' password has been reset to: '.$newPassword.'<br/><br/> '.
+				$serverPath = $this->getDomain().$GLOBALS['CLIENT_ROOT'];
+				$from = '';
+				if (array_key_exists("SYSTEM_EMAIL", $GLOBALS) && !empty($GLOBALS["SYSTEM_EMAIL"])){
+					$from = 'Reset Request <'.$GLOBALS["SYSTEM_EMAIL"].'>';
+				}
+				$body = 'Your '.$GLOBALS['DEFAULT_TITLE'].' password has been reset to: '.$newPassword.'<br/><br/> '.
 					'After logging in, you can change your password by clicking on the My Profile link within the site menu and then selecting the Edit Profile tab. '.
 					'If you have problems, contact the System Administrator: '.$GLOBALS['ADMIN_EMAIL'].'<br/><br/>'.
 					'Data portal: <a href="'.$serverPath.'">'.$serverPath.'</a><br/>'.
 					'Direct link to your user profile: <a href="'.$serverPath.'/profile/viewprofile.php?tabindex=2">'.$serverPath.'/profile/viewprofile.php</a>';
 
-				$status = $this->sendEmail($email, $subject, $body);
+				$status = $this->sendEmail($email, $subject, $body, $from);
 				if($status){
 					$this->resetConnection();
 					$sql = 'UPDATE userlogin SET password = PASSWORD("'.$this->cleanInStr($newPassword).'") WHERE (uid = '.$uid.')';
@@ -333,6 +331,10 @@ class ProfileManager{
 
 	public function lookupUserName($emailAddr){
 		$status = false;
+		$from = '';
+		if (array_key_exists("SYSTEM_EMAIL", $GLOBALS) && !empty($GLOBALS["SYSTEM_EMAIL"])){
+			$from = 'Reset Request <'.$GLOBALS["SYSTEM_EMAIL"].'>';
+		}
 		if(!$this->validateEmailAddress($emailAddr)) return false;
 		$loginStr = '';
 		$sql = 'SELECT u.uid, ul.username, concat_ws("; ",u.lastname,u.firstname) '.
@@ -346,12 +348,10 @@ class ProfileManager{
 		$rs->free();
 		if($loginStr){
 			$subject = $GLOBALS['DEFAULT_TITLE'].' Login Name';
-			$serverPath = 'http://';
-			if((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443) $serverPath = 'https://';
-			$serverPath .= $_SERVER['SERVER_NAME'].$GLOBALS['CLIENT_ROOT'];
-			$bodyStr = 'Your '.$GLOBALS['DEFAULT_TITLE'].' (<a href="http://'.$_SERVER['SERVER_NAME'].$GLOBALS['CLIENT_ROOT'].'">'.$serverPath.
-				'</a>) login name is: '.$loginStr.'<br/><br/>If you continue to have login issues, contact the System Administrator: '.$GLOBALS['ADMIN_EMAIL'];
-			$status = $this->sendEmail($emailAddr,$subject,$bodyStr);
+			$serverPath = $this->getDomain().$GLOBALS['CLIENT_ROOT'];
+			$bodyStr = 'Your '.$GLOBALS['DEFAULT_TITLE'].' (<a href="'.$serverPath.'">'.$serverPath.'</a>) login name is: '.
+				$loginStr.'<br/><br/>If you continue to have login issues, contact the System Administrator: '.$GLOBALS['ADMIN_EMAIL'];
+			$status = $this->sendEmail($emailAddr, $subject, $bodyStr, $from);
 		}
 		else{
 			$this->errorStr = 'There are no users registered to email address: '.$emailAddr;
@@ -359,9 +359,11 @@ class ProfileManager{
 		return $status;
 	}
 
-	private function sendEmail($to, $subject, $body){
+	private function sendEmail($to, $subject, $body, $from = ''){
 		$status = true;
-		$from = 'portal admin <'.$GLOBALS["ADMIN_EMAIL"].'>';
+		if (empty($from)){
+			$from = 'portal admin <'.$GLOBALS["ADMIN_EMAIL"].'>';
+		}
 		$smtpArr = null;
 		if(isset($GLOBALS['SMTP_ARR']) && $GLOBALS['SMTP_ARR']) $smtpArr = $GLOBALS['SMTP_ARR'];
 		if(class_exists('Mail') && $smtpArr){
@@ -376,15 +378,13 @@ class ProfileManager{
 		else{
 			$header = "Organization: ".$GLOBALS["DEFAULT_TITLE"]." \r\n".
 				"MIME-Version: 1.0 \r\n".
-				"Content-type: text/html; charset=iso-8859-1 \r\n".
-				"To: ".$to." \r\n";
+				"Content-type: text/html; charset=iso-8859-1 \r\n";
 			if(array_key_exists("ADMIN_EMAIL",$GLOBALS) && $GLOBALS["ADMIN_EMAIL"]){
 				$header .= "From: ".$from." \r\n".
 					"Reply-To: ".$GLOBALS["ADMIN_EMAIL"]." \r\n".
 					"Return-Path: ".$GLOBALS["ADMIN_EMAIL"]." \r\n";
 			}
-			$header .= "X-Priority: 3\r\n".
-				"X-Mailer: PHP". phpversion() ."\r\n";
+
 			if(!mail($to,$subject,$body,$header)){
 				$status = false;
 				$this->errorStr = 'mailserver might not be properly setup';
@@ -865,41 +865,10 @@ class ProfileManager{
 		return $status;
 	}
 
-	private function cleanOutStr($str){
-		$newStr = str_replace('"',"&quot;",$str);
-		$newStr = str_replace("'","&apos;",$newStr);
-		//$newStr = $this->conn->real_escape_string($newStr);
-		return $newStr;
-	}
-
-	private function cleanInStr($str){
-		$newStr = trim($str);
-		$newStr = preg_replace('/\s\s+/', ' ',$newStr);
-		$newStr = $this->conn->real_escape_string($newStr);
-		return $newStr;
-	}
-
 	private function encodeArr(&$inArr,$cSet){
 		foreach($inArr as $k => $v){
 			$inArr[$k] = $this->encodeString($v,$cSet);
 		}
-	}
-
-	private function encodeString($inStr,$cSet){
- 		$retStr = $inStr;
-		if($cSet == "utf8"){
-			if(mb_detect_encoding($inStr,'UTF-8,ISO-8859-1',true) == "ISO-8859-1"){
-				//$value = utf8_encode($value);
-				$retStr = iconv("ISO-8859-1//TRANSLIT","UTF-8",$inStr);
-			}
-		}
-		elseif($cSet == "latin1"){
-			if(mb_detect_encoding($inStr,'UTF-8,ISO-8859-1') == "UTF-8"){
-				//$value = utf8_decode($value);
-				$retStr = iconv("UTF-8","ISO-8859-1//TRANSLIT",$inStr);
-			}
-		}
-		return $retStr;
 	}
 
 	//OAuth2 functions

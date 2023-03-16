@@ -1,7 +1,6 @@
 <?php
-class DwcArchiverOccurrence{
+class DwcArchiverOccurrence extends Manager{
 
-	private $conn;
 	private $occurDefArr = array();
 	private $schemaType;
 	private $extended = false;
@@ -95,6 +94,8 @@ class DwcArchiverOccurrence{
 		$this->occurDefArr['fields']['recordNumber'] = 'o.recordNumber';
 		$this->occurDefArr['terms']['eventDate'] = 'http://rs.tdwg.org/dwc/terms/eventDate';
 		$this->occurDefArr['fields']['eventDate'] = 'o.eventDate';
+		$this->occurDefArr['terms']['eventDate2'] = 'https://symbiota.org/terms/eventDate2';
+		$this->occurDefArr['fields']['eventDate2'] = 'o.eventDate2';
 		$this->occurDefArr['terms']['year'] = 'http://rs.tdwg.org/dwc/terms/year';
 		$this->occurDefArr['fields']['year'] = 'o.year';
 		$this->occurDefArr['terms']['month'] = 'http://rs.tdwg.org/dwc/terms/month';
@@ -136,7 +137,7 @@ class DwcArchiverOccurrence{
 		$this->occurDefArr['terms']['establishmentMeans'] = 'http://rs.tdwg.org/dwc/terms/establishmentMeans';
 		$this->occurDefArr['fields']['establishmentMeans'] = 'o.establishmentMeans';
 		$this->occurDefArr['terms']['cultivationStatus'] = 'https://symbiota.org/terms/cultivationStatus';
-		$this->occurDefArr['fields']['cultivationStatus'] = 'cultivationStatus';
+		$this->occurDefArr['fields']['cultivationStatus'] = 'o.cultivationStatus';
 		$this->occurDefArr['terms']['lifeStage'] = 'http://rs.tdwg.org/dwc/terms/lifeStage';
 		$this->occurDefArr['fields']['lifeStage'] = 'o.lifeStage';
 		$this->occurDefArr['terms']['sex'] = 'http://rs.tdwg.org/dwc/terms/sex';
@@ -149,6 +150,16 @@ class DwcArchiverOccurrence{
 		//$this->occurDefArr['fields']['samplingEffort'] = 'o.samplingEffort';
 		$this->occurDefArr['terms']['preparations'] = 'http://rs.tdwg.org/dwc/terms/preparations';
 		$this->occurDefArr['fields']['preparations'] = 'o.preparations';
+		$this->occurDefArr['terms']['locationID'] = 'http://rs.tdwg.org/dwc/terms/locationID';
+		$this->occurDefArr['fields']['locationID'] = 'o.locationID';
+		$this->occurDefArr['terms']['continent'] = 'http://rs.tdwg.org/dwc/terms/continent';
+		$this->occurDefArr['fields']['continent'] = 'o.continent';
+		$this->occurDefArr['terms']['waterBody'] = 'http://rs.tdwg.org/dwc/terms/waterBody';
+		$this->occurDefArr['fields']['waterBody'] = 'o.waterBody';
+		$this->occurDefArr['terms']['islandGroup'] = 'http://rs.tdwg.org/dwc/terms/islandGroup';
+		$this->occurDefArr['fields']['islandGroup'] = 'o.islandGroup';
+		$this->occurDefArr['terms']['island'] = 'http://rs.tdwg.org/dwc/terms/island';
+		$this->occurDefArr['fields']['island'] = 'o.island';
 		$this->occurDefArr['terms']['country'] = 'http://rs.tdwg.org/dwc/terms/country';
 		$this->occurDefArr['fields']['country'] = 'o.country';
 		$this->occurDefArr['terms']['stateProvince'] = 'http://rs.tdwg.org/dwc/terms/stateProvince';
@@ -309,11 +320,11 @@ class DwcArchiverOccurrence{
 			}
 			elseif($this->schemaType == 'coge'){
 				$targetArr = array('id','basisOfRecord','institutionCode','collectionCode','catalogNumber','occurrenceID','family','scientificName','scientificNameAuthorship',
-					'kingdom','phylum','class','order','genus','specificEpithet','infraSpecificEpithet',
-					'recordedBy','recordNumber','eventDate','year','month','day','fieldNumber','country','stateProvince','county','municipality',
+					'kingdom','phylum','class','order','genus','specificEpithet','infraSpecificEpithet','recordedBy','recordNumber','eventDate','year','month','day','fieldNumber',
+					'locationID','continent','waterBody','islandGroup','island','country','stateProvince','county','municipality',
 					'locality','localitySecurity','geodeticDatum','decimalLatitude','decimalLongitude','verbatimCoordinates',
-					'minimumElevationInMeters','maximumElevationInMeters','verbatimElevation','maximumDepthInMeters','minimumDepthInMeters','establishmentMeans','cultivationStatus',
-					'sex','occurrenceRemarks','preparationType','individualCount','dateEntered','dateLastModified','recordID','references','collID');
+					'minimumElevationInMeters','maximumElevationInMeters','verbatimElevation','maximumDepthInMeters','minimumDepthInMeters','establishmentMeans',
+					'occurrenceRemarks','dateEntered','dateLastModified','recordID','references','collID');
 				$this->occurDefArr[$k] = array_intersect_key($vArr,array_flip($targetArr));
 			}
 		}
@@ -403,13 +414,14 @@ class DwcArchiverOccurrence{
 	}
 
 	public function getAssociationStr($occid){
-		$retStr = '';
 		if(is_numeric($occid)){
-			$sql = 'SELECT assocID, occid, occidAssociate, relationship, subType, resourceUrl, identifier FROM omoccurassociations WHERE (occid = '.$occid.' OR occidAssociate = '.$occid.') AND verbatimSciname IS NULL ';
+			$relOccidArr = array();
+			$assocArr = array();
+			//Get associations defined within omoccurassociations
+			$sql = 'SELECT assocID, occid, occidAssociate, relationship, subType, resourceUrl, identifier FROM omoccurassociations
+				WHERE (occid = '.$occid.' OR occidAssociate = '.$occid.') AND verbatimSciname IS NULL ';
 			$rs = $this->conn->query($sql);
 			if($rs){
-				$relOccidArr = array();
-				$assocArr = array();
 				while($r = $rs->fetch_object()){
 					$relOccid = $r->occidAssociate;
 					$relationship = $r->relationship;
@@ -431,23 +443,57 @@ class DwcArchiverOccurrence{
 					}
 				}
 				$rs->free();
+			}
+			//Append duplicate specimen duplicate associations
+			$sql = 'SELECT s.occid, l.occid as occidAssociate
+				FROM omoccurduplicatelink s INNER JOIN omoccurduplicates d ON s.duplicateid = d.duplicateid
+				INNER JOIN omoccurduplicatelink l ON d.duplicateid = l.duplicateid
+				WHERE s.occid IN('.$occid.') AND s.occid != l.occid ';
+			$rs = $this->conn->query($sql);
+			if($rs){
+				while($r = $rs->fetch_object()){
+					$assocKey = 'sd-'.$r->occidAssociate;
+					$assocArr[$assocKey]['occidassoc'] = $r->occidAssociate;
+					$assocArr[$assocKey]['relationship'] = 'herbariumSpecimenDuplicate';
+					$relOccidArr[$r->occidAssociate][] = $assocKey;
+				}
+				$rs->free();
+			}
+			//Append resource URLs to each output record
+			if($relOccidArr){
+				$this->setServerDomain();
+				//Replace GUID identifiers with occurrenceID values
+				$sql = 'SELECT occid, occurrenceid FROM omoccurrences WHERE occid IN('.implode(',',array_keys($relOccidArr)).') AND occurrenceid IS NOT NULL';
+				$rs = $this->conn->query($sql);
+				while($r = $rs->fetch_object()){
+					foreach($relOccidArr[$r->occid] as $k => $targetAssocID){
+						if($r->occurrenceid){
+							$url = $r->occurrenceid;
+							if(substr($url, 0, 4) != 'http') $url = $this->serverDomain.$GLOBALS['CLIENT_ROOT'].'/collections/individual/index.php?guid='.$r->occurrenceid;
+							$assocArr[$targetAssocID]['resourceurl'] = $url;
+							unset($relOccidArr[$r->occid][$k]);
+						}
+					}
+				}
+				$rs->free();
 				if($relOccidArr){
-					$this->setServerDomain();
-					$sql = 'SELECT o.occid, IFNULL(o.occurrenceid,g.guid) as guid FROM omoccurrences o INNER JOIN guidoccurrences g ON o.occid = g.occid WHERE o.occid IN('.implode(',',array_keys($relOccidArr)).')';
+					//Get recordID/occurrenceID guids for specimens live managed records
+					$sql = 'SELECT occid, guid FROM guidoccurrences WHERE occid IN('.implode(',',array_keys($relOccidArr)).')';
 					$rs = $this->conn->query($sql);
 					while($r = $rs->fetch_object()){
 						foreach($relOccidArr[$r->occid] as $targetAssocID){
-							$assocArr[$targetAssocID]['identifier'] = $r->guid;
 							$assocArr[$targetAssocID]['resourceurl'] = $this->serverDomain.$GLOBALS['CLIENT_ROOT'].'/collections/individual/index.php?guid='.$r->guid;
 						}
 					}
 					$rs->free();
 				}
-				foreach($assocArr as $assocateArr){
-					$retStr .= '|'.$assocateArr['relationship'];
-					if($assocateArr['subtype']) $retStr .= ' ('.$assocateArr['subtype'].')';
-					$retStr .= ': '.$assocateArr['resourceurl'];
-				}
+			}
+			//Create output strings
+			$retStr = '';
+			foreach($assocArr as $assocateArr){
+				$retStr .= ' | '.$assocateArr['relationship'];
+				if(!empty($assocateArr['subtype'])) $retStr .= ' ('.$assocateArr['subtype'].')';
+				$retStr .= ': '.$assocateArr['resourceurl'];
 			}
 		}
 		return trim($retStr,' |');
@@ -506,10 +552,10 @@ class DwcArchiverOccurrence{
 			if($rs = $this->conn->query($sql)){
 				while($r = $rs->fetch_object()){
 					$this->relationshipArr[$r->term] = $r->inverseRelationship;
+					$this->relationshipArr[$r->inverseRelationship] = $r->term;
 				}
 				$rs->free();
 			}
-			$this->relationshipArr = array_merge($this->relationshipArr,array_flip($this->relationshipArr));
 		}
 	}
 
@@ -639,12 +685,7 @@ class DwcArchiverOccurrence{
 	}
 
 	public function setServerDomain(){
-		if(!$this->serverDomain){
-			$this->serverDomain = "http://";
-			if((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443) $this->serverDomain = "https://";
-			$this->serverDomain .= $_SERVER["SERVER_NAME"];
-			if($_SERVER["SERVER_PORT"] && $_SERVER["SERVER_PORT"] != 80 && $_SERVER['SERVER_PORT'] != 443) $this->serverDomain .= ':'.$_SERVER["SERVER_PORT"];
-		}
+		if(!$this->serverDomain) $this->serverDomain = $this->getDomain();
 	}
 
 	//Setter and getter
@@ -658,16 +699,6 @@ class DwcArchiverOccurrence{
 
 	public function setIncludePaleo($bool){
 		if($bool) $this->includePaleo = true;
-	}
-
-	//Misc functions
-	private function cleanInStr($str){
-		$newStr = trim($str);
-		if($newStr){
-			$newStr = preg_replace('/\s\s+/', ' ',$newStr);
-			$newStr = $this->conn->real_escape_string($newStr);
-		}
-		return $newStr;
 	}
 }
 ?>
