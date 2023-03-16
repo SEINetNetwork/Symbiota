@@ -4,25 +4,17 @@ include_once($SERVER_ROOT.'/classes/OccurrenceIndividual.php');
 include_once($SERVER_ROOT.'/classes/DwcArchiverCore.php');
 include_once($SERVER_ROOT.'/classes/RdfUtility.php');
 include_once($SERVER_ROOT.'/content/lang/collections/individual/index.'.$LANG_TAG.'.php');
-header("Content-Type: text/html; charset=".$CHARSET);
+include_once($SERVER_ROOT.'/content/lang/collections/fieldterms/materialSampleVars.'.$LANG_TAG.'.php');
+header('Content-Type: text/html; charset=' . $CHARSET);
 
-$occid = array_key_exists("occid",$_REQUEST)?trim($_REQUEST["occid"]):0;
-$collid = array_key_exists("collid",$_REQUEST)?trim($_REQUEST["collid"]):0;
-$pk = array_key_exists('pk',$_REQUEST)?trim($_REQUEST['pk']):'';
-$guid = array_key_exists('guid',$_REQUEST)?trim($_REQUEST['guid']):'';
-$submit = array_key_exists('formsubmit',$_REQUEST)?trim($_REQUEST['formsubmit']):'';
-$tabIndex = array_key_exists('tabindex',$_REQUEST)?$_REQUEST['tabindex']:0;
-$clid = array_key_exists("clid",$_REQUEST)?trim($_REQUEST["clid"]):0;
-$format = isset($_GET['format'])?$_GET['format']:'';
-
-//Sanitize input variables
-if(!is_numeric($occid)) $occid = 0;
-if(!is_numeric($collid)) $collid = 0;
-if($guid) $guid = filter_var($guid,FILTER_SANITIZE_STRING);
-if(!is_numeric($tabIndex)) $tabIndex = 0;
-if(!is_numeric($clid)) $clid = 0;
-if($pk && !preg_match('/^[a-zA-Z0-9\s_]+$/',$pk)) $pk = '';
-if($submit && !preg_match('/^[a-zA-Z0-9\s_]+$/',$submit)) $submit = '';
+$occid = array_key_exists('occid', $_REQUEST) ? filter_var($_REQUEST['occid'], FILTER_SANITIZE_NUMBER_INT) : 0;
+$collid = array_key_exists('collid', $_REQUEST) ? filter_var($_REQUEST['collid'], FILTER_SANITIZE_NUMBER_INT) : 0;
+$pk = array_key_exists('pk', $_REQUEST) ? filter_var($_REQUEST['pk'], FILTER_SANITIZE_STRING):'';
+$guid = array_key_exists('guid', $_REQUEST) ? filter_var($_REQUEST['guid'], FILTER_SANITIZE_STRING) : '';
+$tabIndex = array_key_exists('tabindex', $_REQUEST) ? filter_var($_REQUEST['tabindex'], FILTER_SANITIZE_NUMBER_INT) : 0;
+$clid = array_key_exists('clid', $_REQUEST) ? filter_var($_REQUEST['clid'], FILTER_SANITIZE_NUMBER_INT) : 0;
+$format = isset($_GET['format']) ? filter_var($_GET['format'], FILTER_SANITIZE_STRING) : '';
+$submit = array_key_exists('formsubmit',$_POST)?$_POST['formsubmit']:'';
 
 $indManager = new OccurrenceIndividual($submit?'write':'readonly');
 if($occid) $indManager->setOccid($occid);
@@ -33,18 +25,46 @@ elseif($collid && $pk){
 }
 
 $indManager->setDisplayFormat($format);
-$occArr = $indManager->getOccData();
+$indManager->setOccurData();
 if(!$occid) $occid = $indManager->getOccid();
-$collMetadata = $indManager->getMetadata();
-if(!$collid && $occArr) $collid = $occArr['collid'];
+if(!$collid) $collid = $indManager->getCollid();
 
+$isSecuredReader = false;
+$isEditor = false;
+if($SYMB_UID){
+	//Check editing status
+	if($IS_ADMIN || (array_key_exists('CollAdmin',$USER_RIGHTS) && in_array($collid,$USER_RIGHTS['CollAdmin']))){
+		$isEditor = true;
+	}
+	elseif((array_key_exists('CollEditor',$USER_RIGHTS) && in_array($collid,$USER_RIGHTS['CollEditor']))){
+		$isEditor = true;
+	}
+	elseif(isset($occArr['observeruid']) && $occArr['observeruid'] == $SYMB_UID){
+		$isEditor = true;
+	}
+	elseif($indManager->isTaxonomicEditor()){
+		$isEditor = true;
+	}
+	//Check locality security
+	if($isEditor || array_key_exists('RareSppAdmin',$USER_RIGHTS) || array_key_exists('RareSppReadAll',$USER_RIGHTS)){
+		$isSecuredReader = true;
+	}
+	elseif(isset($USER_RIGHTS['RareSppReader']) && in_array($collid,$USER_RIGHTS['RareSppReader'])){
+		$isSecuredReader = true;
+	}
+	elseif(isset($USER_RIGHTS['CollAdmin'])){
+		$isSecuredReader = true;
+	}
+	elseif(isset($USER_RIGHTS['CollEditor']) && in_array($collid,$USER_RIGHTS['CollEditor'])){
+		$isSecuredReader = true;
+	}
+}
+$indManager->applyProtections($isSecuredReader);
+$occArr = $indManager->getOccData();
+$collMetadata = $indManager->getMetadata();
 $genticArr = $indManager->getGeneticArr();
 
 $statusStr = '';
-$securityCode = ($occArr && $occArr['localitysecurity']?$occArr['localitysecurity']:0);
-
-$isEditor = false;
-
 //  If other than HTML was requested, return just that content.
 if(isset($_SERVER['HTTP_ACCEPT'])){
 	$accept = RdfUtility::parseHTTPAcceptHeader($_SERVER['HTTP_ACCEPT']);
@@ -74,31 +94,6 @@ if(isset($_SERVER['HTTP_ACCEPT'])){
 }
 
 if($SYMB_UID){
-	//Check editing status
-	if($IS_ADMIN || (array_key_exists('CollAdmin',$USER_RIGHTS) && in_array($collid,$USER_RIGHTS['CollAdmin']))){
-		$isEditor = true;
-	}
-	elseif((array_key_exists('CollEditor',$USER_RIGHTS) && in_array($collid,$USER_RIGHTS['CollEditor']))){
-		$isEditor = true;
-	}
-	elseif(isset($occArr['observeruid']) && $occArr['observeruid'] == $SYMB_UID){
-		$isEditor = true;
-	}
-	elseif($indManager->isTaxonomicEditor()){
-		$isEditor = true;
-	}
-
-	//Check locality security
-	if($isEditor || array_key_exists("RareSppAdmin",$USER_RIGHTS) || array_key_exists("RareSppReadAll",$USER_RIGHTS)){
-		$securityCode = 0;
-	}
-	elseif(array_key_exists("RareSppReader",$USER_RIGHTS) && in_array($collid,$USER_RIGHTS["RareSppReader"])){
-		$securityCode = 0;
-	}
-	elseif(array_key_exists('CollAdmin',$USER_RIGHTS) || array_key_exists('CollEditor',$USER_RIGHTS)){
-		$securityCode = 0;
-	}
-
 	//Form action submitted
 	if(array_key_exists('delvouch',$_GET) && $occid){
 		if(!$indManager->deleteVoucher($occid,$_GET['delvouch'])){
@@ -128,33 +123,41 @@ if($SYMB_UID){
 			$statusStr = $indManager->getErrorMessage();
 		}
 	}
-	elseif($submit == "Add Voucher"){
+	elseif($submit == 'Add Voucher'){
 		if(!$indManager->linkVoucher($_POST)){
 			$statusStr = $indManager->getErrorMessage();
+		}
+	}
+	if($isEditor){
+		if($submit == 'restoreRecord'){
+			if($indManager->restoreRecord($occid)){
+				$occArr = $indManager->getOccData();
+				$collMetadata = $indManager->getMetadata();
+			}
+			else $statusStr = $indManager->getErrorMessage();
 		}
 	}
 }
 
 $displayMap = false;
-if(!$securityCode && $occArr && is_numeric($occArr['decimallatitude']) && is_numeric($occArr['decimallongitude'])) $displayMap = true;
+if($occArr && is_numeric($occArr['decimallatitude']) && is_numeric($occArr['decimallongitude'])) $displayMap = true;
 $dupClusterArr = $indManager->getDuplicateArr();
 $commentArr = $indManager->getCommentArr($isEditor);
 $traitArr = $indManager->getTraitArr();
 ?>
 <html>
 <head>
-	<title><?php echo $DEFAULT_TITLE.(isset($LANG['DETAILEDCOLREC'])?$LANG['DETAILEDCOLREC']:'Detailed Collection Record Information'); ?></title>
-	<meta name="viewport" content="initial-scale=1.0, user-scalable=yes" />
+	<title><?php echo $DEFAULT_TITLE.' '.(isset($LANG['DETAILEDCOLREC'])?$LANG['DETAILEDCOLREC']:'Detailed Collection Record Information'); ?></title>
 	<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $CHARSET; ?>"/>
-	<meta name="description" content="<?php echo 'Occurrence author: '.$occArr['recordedby'].','.$occArr['recordnumber']; ?>" />
-	<meta name="keywords" content="<?php echo $occArr['guid']; ?>">
+	<meta name="description" content="<?php echo 'Occurrence author: '.($occArr?$occArr['recordedby'].','.$occArr['recordnumber']:''); ?>" />
+	<meta name="keywords" content="<?php echo (!empty($occArr['occurrenceid'])?$occArr['occurrenceid']:'').', '.(!empty($occArr['recordid'])?$occArr['recordid']:''); ?>" />
+	<link href="<?php echo $CSS_BASE_PATH; ?>/jquery-ui.css" type="text/css" rel="stylesheet">
 	<?php
-	$cssPath = '/css/symb/custom/collindividualindex.css';
-	if(!file_exists($SERVER_ROOT.$cssPath)) $cssPath = '/css/symb/collindividualindex.css';
-	echo '<link href="'.$CLIENT_ROOT.$cssPath.'?ver='.$CSS_VERSION_LOCAL.'" type="text/css" rel="stylesheet" />';
+	include_once($SERVER_ROOT.'/includes/head.php');
 	include_once($SERVER_ROOT.'/includes/googleanalytics.php');
 	?>
-	<link href="../../css/jquery-ui.css" type="text/css" rel="stylesheet" />
+	<link href="<?php echo $CSS_BASE_PATH; ?>/symbiota/collections/individual/index.css?ver=1" type="text/css" rel="stylesheet" >
+	<link href="<?php echo $CSS_BASE_PATH; ?>/symbiota/collections/individual/popup.css" type="text/css" rel="stylesheet" >
 	<script src="../../js/jquery.js" type="text/javascript"></script>
 	<script src="../../js/jquery-ui.js" type="text/javascript"></script>
 	<script src="//maps.googleapis.com/maps/api/js?<?php echo (isset($GOOGLE_MAP_KEY) && $GOOGLE_MAP_KEY?'key='.$GOOGLE_MAP_KEY:''); ?>"></script>
@@ -164,7 +167,7 @@ $traitArr = $indManager->getTraitArr();
 		var mapInit = false;
 
 		$(document).ready(function() {
-			$('#tabs').tabs({
+			$('#tabs-div').tabs({
 				beforeActivate: function(event, ui) {
 					if(document.getElementById("map_canvas") && ui.newTab.index() == 1 && !mapInit){
 						mapInit = true;
@@ -174,12 +177,31 @@ $traitArr = $indManager->getTraitArr();
 				},
 				active: tabIndex
 			});
-
-			$("#tabs").tabs().css({
-				'min-height': '400px',
-				'overflow': 'auto'
-			});
 		});
+
+		function refreshRecord(occid){
+			$.ajax({
+				method: "GET",
+				url: "<?php echo $CLIENT_ROOT; ?>/api/v2/occurrence/"+occid+"/reharvest"
+			})
+			.done(function( response ) {
+				if(response.status == 200){
+					$("#dataStatus").val(response.dataStatus);
+					$("#fieldsModified").val(JSON.stringify(response.fieldsModified));
+					$("#sourceDateLastModified").val(response.sourceDateLastModified);
+					alert("Record reharvested. Page will reload to refresh contents...");
+					$("#refreshForm").submit();
+				}
+				else{
+					alert("ERROR updating record: "+response.error);
+				}
+			});
+		}
+
+		function displayAllMaterialSamples(){
+			$(".mat-sample-div").show();
+			$("#mat-sample-more-div").hide();
+		}
 
 		function toggle(target){
 			var objDiv = document.getElementById(target);
@@ -189,11 +211,11 @@ $traitArr = $indManager->getTraitArr();
 			}
 			else{
 				var divObjs = document.getElementsByTagName("div");
-			  	for (i = 0; i < divObjs.length; i++) {
-			  		var obj = divObjs[i];
-			  		if(obj.getAttribute("class") == target || obj.getAttribute("className") == target){
+				for (i = 0; i < divObjs.length; i++) {
+					var obj = divObjs[i];
+					if(obj.getAttribute("class") == target || obj.getAttribute("className") == target){
 						if(obj.style.display=="none") obj.style.display="inline";
-					 	else obj.style.display="none";
+						else obj.style.display="none";
 					}
 				}
 			}
@@ -242,16 +264,6 @@ $traitArr = $indManager->getTraitArr();
 		}
 		?>
 	</script>
-	<style>
-		fieldset{ margin:10px; padding:15px; width:90% }
-		legend{ font-weight:bold; }
-		.title{ font-weight:bold; font-size:120%; }
-		.label{ font-weight:bold; }
-		.imgDiv{ max-width:200; float:left; text-align:center; padding:5px }
-		.occur-ref{ margin: 10px 0px }
-		.traitDiv{ margin:20px; }
-		.traitName{ font-weight:bold; }
-	</style>
 </head>
 <body>
 	<div id="fb-root"></div>
@@ -277,73 +289,71 @@ $traitArr = $indManager->getTraitArr();
 	<div id="popup-innertext">
 		<?php
 		if($statusStr){
+			$statusColor = 'green';
+			if(strpos($statusStr, 'ERROR')) $statusColor = 'red';
 			?>
 			<hr />
 			<div style="padding:15px;">
-				<span style="color:red;"><?php echo $statusStr; ?></span>
+				<span style="color:<?php echo $statusColor; ?>;"><?php echo $statusStr; ?></span>
 			</div>
 			<hr />
 			<?php
 		}
 		if($occArr){
 			?>
-			<div id="tabs" style="margin:10px;clear:both;">
+			<div id="tabs-div">
 				<ul>
 					<li><a href="#occurtab"><span><?php echo (isset($LANG['DETAILS'])?$LANG['DETAILS']:'Details'); ?></span></a></li>
 					<?php
 					if($displayMap) echo '<li><a href="#maptab"><span>'.(isset($LANG['MAP'])?$LANG['MAP']:'Map').'</span></a></li>';
 					if($genticArr) echo '<li><a href="#genetictab"><span>'.(isset($LANG['GENETIC'])?$LANG['GENETIC']:'Genetic').'</span></a></li>';
-					if($dupClusterArr) echo '<li><a href="#dupestab"><span>'.(isset($LANG['DUPLICATES'])?$LANG['DUPLICATES']:'Duplicates').'</span></a></li>';
+					if($dupClusterArr) echo '<li><a href="#dupestab-div"><span>'.(isset($LANG['DUPLICATES'])?$LANG['DUPLICATES']:'Duplicates').'</span></a></li>';
 					?>
 					<li><a href="#commenttab"><span><?php echo ($commentArr?count($commentArr).' ':''); echo (isset($LANG['COMMENTS'])?$LANG['COMMENTS']:'Comments'); ?></span></a></li>
-					<li><a href="linkedresources.php?occid=<?php echo $occid.'&tid='.$occArr['tidinterpreted'].'&clid='.$clid.'&collid='.$collid; ?>"><span><?php echo (isset($LANG['LINKEDRES'])?$LANG['LINKEDRES']:'Linked Resources'); ?></span></a></li>
+					<li><a href="linkedresources.php?occid=<?php echo $occid.'&tid='.$occArr['tidinterpreted'].'&clid='.$clid.'&collid='.$collid; ?>"><span><?php echo $LANG['LINKED_RESOURCES']; ?></span></a></li>
 					<?php
 					if($traitArr) echo '<li><a href="#traittab"><span>'.(isset($LANG['TRAITS'])?$LANG['TRAITS']:'Traits').'</span></a></li>';
-					if($isEditor) echo '<li><a href="#edittab"><span>'.(isset($LANG['EDITHIST'])?$LANG['EDITHIST']:'Edit History').'</span></a></li>';
+					if($isEditor) echo '<li><a href="#edittab"><span>'.$LANG['EDIT_HISTORY'].'</span></a></li>';
 					?>
 				</ul>
 				<div id="occurtab">
-					<div style="float:right;">
-						<div style="float:right;">
+					<div id="media-div">
+						<div>
 							<a class="twitter-share-button" href="https://twitter.com/share" data-url="<?php echo $_SERVER['HTTP_HOST'].$CLIENT_ROOT.'/collections/individual/index.php?occid='.$occid.'&clid='.$clid; ?>"><?php echo (isset($LANG['TWEET'])?$LANG['TWEET']:'Tweet'); ?></a>
 						</div>
-						<div style="float:right;margin-right:10px;">
+						<div>
 							<div class="fb-share-button" data-href="" data-layout="button_count"></div>
 						</div>
 					</div>
 					<?php
 					$iconUrl = (substr($collMetadata["icon"],0,6)=='images'?'../../':'').$collMetadata['icon'];
 					if($iconUrl){
-						$iconUrl = '<img border="1" height="50" width="50" src="'.$iconUrl.'" />';
-						echo '<div style="float:left;margin:15px 0px;text-align:center;font-weight:bold;width:120px;">';
-						echo $iconUrl;
-						echo '</div>';
+						?>
+						<div id="collicon-div">
+							<img src="<?php echo $iconUrl; ?>" />
+						</div>
+						<?php
 					}
 					$instCode = $collMetadata['institutioncode'];
 					if($collMetadata['collectioncode']) $instCode .= ':'.$collMetadata['collectioncode'];
 					?>
-					<div style="padding:25px;font-size:18px;font-weight:bold;">
-						<div style="float:left;margin-right:5px">
-							<?php echo $collMetadata['collectionname']; ?>
-						</div>
-						<div style="float:left;">
-							<?php echo '('.$instCode.')'; ?>
-						</div>
+					<div class="title1-div">
+						<?php echo $collMetadata['collectionname'].' ('.$instCode.')'; ?>
 					</div>
-					<div style="clear:both;margin-left:60px;">
+					<div  id="occur-div">
 						<?php
 						if(array_key_exists('loan',$occArr)){
 							?>
-							<div style="float:right;color:red;font-weight:bold;" title="<?php echo 'Loan #'.$occArr['loan']['identifier']; ?>">
-								<?php echo (isset($LANG['ONLOANTO'])?$LANG['ONLOANTO']:'On Loan To'); ?>
+							<div id="loan-div" title="<?php echo 'Loan #'.$occArr['loan']['identifier']; ?>">
+								<?php echo $LANG['ON_LOAN']; ?>
 								<?php echo $occArr['loan']['code']; ?>
 							</div>
 							<?php
 						}
 						if(array_key_exists('relation',$occArr)){
 							?>
-							<fieldset style="float:right; width:45%">
-								<legend><?php echo (isset($LANG['RELATEDOCC'])?$LANG['RELATEDOCC']:'Related Occurrences'); ?></legend>
+							<fieldset id="association-div">
+								<legend><?php echo (isset($LANG['RELATED_OCCUR'])?$LANG['RELATED_OCCUR']:'Related Occurrences'); ?></legend>
 								<?php
 								$displayLimit = 5;
 								$cnt = 0;
@@ -372,9 +382,9 @@ $traitArr = $indManager->getTraitArr();
 						}
 						if($occArr['catalognumber']){
 							?>
-							<div>
+							<div id="cat-div">
 								<?php
-								echo '<b>'.(isset($LANG['CATALOGNUM'])?$LANG['CATALOGNUM']:'Catalog #').': </b>';
+								echo '<label>'.(isset($LANG['CATALOG_NUMBER'])?$LANG['CATALOG_NUMBER']:'Catalog #').': </label>';
 								echo $occArr['catalognumber'];
 								?>
 							</div>
@@ -382,9 +392,9 @@ $traitArr = $indManager->getTraitArr();
 						}
 						if($occArr['occurrenceid']){
 							?>
-							<div>
+							<div id="occurrenceid-div">
 								<?php
-								echo '<b>'.(isset($LANG['OCCID'])?$LANG['OCCID']:'Occurrence ID').': </b>';
+								echo '<label>'.$LANG['OCCURRENCE_ID'].': </label>';
 								$resolvableGuid = false;
 								if(substr($occArr['occurrenceid'],0,4) == 'http') $resolvableGuid = true;
 								if($resolvableGuid) echo '<a href="'.$occArr['occurrenceid'].'" target="_blank">';
@@ -395,18 +405,19 @@ $traitArr = $indManager->getTraitArr();
 							<?php
 						}
 						if($occArr['othercatalognumbers']){
-							if(substr($occArr['othercatalognumbers'],0,1)=='{'){
+							$char = substr($occArr['othercatalognumbers'],0,1);
+							if($char == '{' || $char == '['){
 								$otherCatArr = json_decode($occArr['othercatalognumbers'],true);
 								foreach($otherCatArr as $catTag => $catValueArr){
-									if(!$catTag) $catTag = 'Secondary Catalog #';
-									echo '<div><b>'.$catTag.':</b> '.implode('; ', $catValueArr).'</div>';
+									if(!$catTag) $catTag = $LANG['OTHER_CATALOG_NUMBERS'];
+									echo '<div class="assoccatnum-div"><label>'.$catTag.':</label> '.implode('; ', $catValueArr).'</div>';
 								}
 							}
 							else{
 								?>
-								<div>
+								<div class="assoccatnum-div">
 									<?php
-									echo '<b>'.(isset($LANG['SECONDARYCATNUM'])?$LANG['SECONDARYCATNUM']:'Secondary Catalog #').': </b>';
+									echo '<label>'.$LANG['OTHER_CATALOG_NUMBERS'].': </label>';
 									echo $occArr['othercatalognumbers'];
 									?>
 								</div>
@@ -414,28 +425,30 @@ $traitArr = $indManager->getTraitArr();
 							}
 						}
 						if($occArr['sciname']){
-							echo '<b>'.(isset($LANG['TAXON'])?$LANG['TAXON']:'Taxon').':</b> ';
-							if($securityCode < 2){
-								echo '<i>'.$occArr['sciname'].'</i> '.$occArr['scientificnameauthorship'];
-								if($occArr['localitysecurity'] == 2 || $occArr['localitysecurity'] == 3){
-									echo '<span style="margin-left:10px;color:orange">'.(isset($LANG['TAXPROTECTED'])?$LANG['TAXPROTECTED']:'taxonomic protection applied for non-authorized users').'</span>';
-								}
-							}
-							else echo (isset($LANG['IDPROTECTED'])?$LANG['IDPROTECTED']:'identification protected');
-							if($occArr['tidinterpreted']){
-								//echo ' <a href="../../taxa/index.php?taxon='.$occArr['tidinterpreted'].'" title="Open Species Profile Page"><img src="" /></a>';
-							}
 							?>
-							<br/>
+							<div class="sciname-div">
+								<?php
+								echo '<label>'.$LANG['TAXON'].':</label> ';
+								echo '<i>'.$occArr['sciname'].'</i> '.$occArr['scientificnameauthorship'];
+								if(isset($occArr['taxonsecure'])){
+									echo '<span class="notice-span"> '.$LANG['ID_PROTECTED'].'</span>';
+								}
+								if($occArr['tidinterpreted']){
+									//echo ' <a href="../../taxa/index.php?taxon='.$occArr['tidinterpreted'].'" title="Open Species Profile Page"><img src="" /></a>';
+								}
+								?>
+							</div>
 							<?php
-							if($occArr['identificationqualifier']) echo '<b>'.(isset($LANG['IDQUALIFIER'])?$LANG['IDQUALIFIER']:'Identification Qualifier').':</b> '.$occArr['identificationqualifier'].'<br/>';
+							if($occArr['identificationqualifier']){
+								echo '<div id="idqualifier-div"><label>'.$LANG['ID_QUALIFIER'].':</label> '.$occArr['identificationqualifier'].'</div>';
+							}
 						}
-						if($occArr['family']) echo '<b>'.(isset($LANG['FAMILY'])?$LANG['FAMILY']:'Family').':</b> '.$occArr['family'];
+						if($occArr['family']) echo '<label>'.$LANG['FAMILY'].':</label> '.$occArr['family'];
 						if($occArr['identifiedby']){
 							?>
-							<div>
+							<div class="identby-div">
 								<?php
-								echo '<b>'.(isset($LANG['DETERMINER'])?$LANG['DETERMINER']:'Determiner').': </b>'.$indManager->activateOrcidID($occArr['identifiedby']);
+								echo '<label>'.(isset($LANG['DETERMINER'])?$LANG['DETERMINER']:'Determiner').': </label>'.$indManager->activateOrcidID($occArr['identifiedby']);
 								if($occArr['dateidentified']) echo ' ('.$occArr['dateidentified'].')';
 								?>
 							</div>
@@ -443,104 +456,105 @@ $traitArr = $indManager->getTraitArr();
 						}
 						if($occArr['taxonremarks']){
 							?>
-							<div style="margin-left:10px;">
+							<div class="taxonremarks-div">
 								<?php
-								echo '<b>'.(isset($LANG['TAXONREMARKS'])?$LANG['TAXONREMARKS']:'Taxon Remarks').': </b>';
+								echo '<label>'.$LANG['TAXON_REMARKS'].': </label>';
 								echo $occArr['taxonremarks'];
+								?>
+							</div>
+							<?php
+						}
+						if($occArr['identificationreferences']){ ?>
+							<div class="identref-div">
+								<?php
+								echo '<label>'.$LANG['ID_REFERENCES'].': </label>';
+								echo $occArr['identificationreferences'];
 								?>
 							</div>
 							<?php
 						}
 						if($occArr['identificationremarks']){
 							?>
-							<div style="margin-left:10px;">
+							<div class="identremarks-div">
 								<?php
-								echo '<b>'.(isset($LANG['IDREMARKS'])?$LANG['IDREMARKS']:'ID Remarks').': </b>';
+								echo '<label>'.$LANG['ID_REMARKS'].': </label>';
 								echo $occArr['identificationremarks'];
 								?>
 							</div>
 							<?php
 						}
-						if($occArr['identificationreferences']){ ?>
-							<div style="margin-left:10px;">
-								<?php
-								echo '<b>'.(isset($LANG['IDREFERENCES'])?$LANG['IDREFERENCES']:'ID References').': </b>';
-								echo $occArr['identificationreferences'];
-								?>
-							</div>
-							<?php
-						}
-						if(array_key_exists('dets',$occArr)){
+						if(array_key_exists('dets',$occArr) && (count($occArr['dets']) > 1 || $occArr['dets'][key($occArr['dets'])]['iscurrent'] == 0)){
 							?>
-							<div class="detdiv" style="margin-left:10px;cursor:pointer;" onclick="toggle('detdiv');">
-								<img src="../../images/plus_sm.png" style="border:0px;" />
-								<?php echo (isset($LANG['SHOWDETHISTORY'])?$LANG['SHOWDETHISTORY']:'Show Determination History'); ?>
-							</div>
-							<div class="detdiv" style="display:none;">
-								<div style="margin-left:10px;cursor:pointer;" onclick="toggle('detdiv');">
-									<img src="../../images/minus_sm.png" style="border:0px;" />
-									<?php echo (isset($LANG['HIDEDETHISTORY'])?$LANG['HIDEDETHISTORY']:'Hide Determination History'); ?>
+							<div id="determination-div">
+								<div class="det-toogle-div">
+									<a href="#" onclick="toggle('det-toogle-div');return false"><img src="../../images/plus_sm.png"></a>
+									<?php echo $LANG['SHOW_DET_HISTORY']; ?>
 								</div>
-								<fieldset>
-									<legend><?php echo (isset($LANG['DETHISTORY'])?$LANG['DETHISTORY']:'Determination History'); ?></legend>
-									<?php
-									$firstIsOut = false;
-									$dArr = $occArr['dets'];
-									foreach($dArr as $detArr){
-									 	if($firstIsOut) echo '<hr />';
-										 	$firstIsOut = true;
-									 	?>
-										 <div style="margin:10px;">
-										 	<?php
-										 	if($detArr['qualifier']) echo $detArr['qualifier'];
-										 	if($securityCode < 2) echo ' <b><i>'.$detArr['sciname'].'</i></b> '.$detArr['author'];
-										 	else echo '<b>'.(isset($LANG['SPECIDPROTECTED'])?$LANG['SPECIDPROTECTED']:'Species identification protected').'</b>';
-										 	?>
-										 	<div style="">
-										 		<?php
-										 		echo '<b>'.(isset($LANG['DETERMINER'])?$LANG['DETERMINER']:'Determiner').': </b>';
-										 		echo $detArr['identifiedby'];
-										 		?>
-										 	</div>
-										 	<div style="">
-										 		<?php
-										 		echo '<b>'.(isset($LANG['DATE'])?$LANG['DATE']:'Date').': </b>';
-										 		echo $detArr['date'];
-										 		?>
-										 	</div>
-										 	<?php
-										 	if($detArr['ref']){ ?>
-											 	<div style="">
-											 		<?php
-											 		echo '<b>'.(isset($LANG['IDREFERENCES'])?$LANG['IDREFERENCES']:'ID References').': </b>';
-											 		echo $detArr['ref'];
-											 		?>
-											 	</div>
-										 		<?php
-										 	}
-										 	if($detArr['notes']){
-										 		?>
-											 	<div style="">
-											 		<?php
-											 		echo '<b>'.(isset($LANG['IDREMARKS'])?$LANG['IDREMARKS']:'ID Remarks').': </b>';
-											 		echo $detArr['notes'];
-											 		?>
-											 	</div>
-										 		<?php
-										 	}
-										 	?>
-										 </div>
+								<div class="det-toogle-div" style="display:none;">
+									<div>
+										<a href="#" onclick="toggle('det-toogle-div');return false"><img src="../../images/minus_sm.png"></a>
+										<?php echo $LANG['HIDE_DET_HISTORY']; ?>
+									</div>
+									<fieldset>
+										<legend><?php echo $LANG['DET_HISTORY']; ?></legend>
 										<?php
-									}
-									?>
-								</fieldset>
+										$firstIsOut = false;
+										$dArr = $occArr['dets'];
+										foreach($dArr as $detArr){
+											if($firstIsOut) echo '<hr />';
+												$firstIsOut = true;
+											?>
+											<div style="margin:10px;">
+												<?php
+												if($detArr['qualifier']) echo $detArr['qualifier'];
+												echo ' <label><i>'.$detArr['sciname'].'</i></label> '.$detArr['author'];
+												?>
+												<div class="identby-div">
+													<?php
+													echo '<label>'.(isset($LANG['DETERMINER'])?$LANG['DETERMINER']:'Determiner').': </label>';
+													echo $detArr['identifiedby'];
+													?>
+												</div>
+												<div class="identdate-div">
+													<?php
+													echo '<label>'.$LANG['DATE'].': </label>';
+													echo $detArr['date'];
+													?>
+												</div>
+												<?php
+												if($detArr['ref']){ ?>
+													<div class="identref-div">
+														<?php
+														echo '<label>'.$LANG['ID_REFERENCES'].': </label>';
+														echo $detArr['ref'];
+														?>
+													</div>
+													<?php
+												}
+												if($detArr['notes']){
+													?>
+													<div class="identremarks-div">
+														<?php
+														echo '<label>'.$LANG['ID_REMARKS'].': </label>';
+														echo $detArr['notes'];
+														?>
+													</div>
+													<?php
+												}
+												?>
+											</div>
+											<?php
+										}
+										?>
+									</fieldset>
+								</div>
 							</div>
 							<?php
 						}
 						if($occArr['typestatus']){ ?>
-							<div>
+							<div id="typestatus-div">
 								<?php
-								echo '<b>'.(isset($LANG['TYPESTATUS'])?$LANG['TYPESTATUS']:'Type Status').': </b>';
+								echo '<label>'.$LANG['TYPE_STATUS'].': </label>';
 								echo $occArr['typestatus'];
 								?>
 							</div>
@@ -548,8 +562,8 @@ $traitArr = $indManager->getTraitArr();
 						}
 						if($occArr['eventid']){
 							?>
-							<div>
-								<span class="label"><?php echo (isset($LANG['EVENTID'])?$LANG['EVENTID']:'Event ID'); ?>: </span>
+							<div id="eventid-div">
+								<label><?php echo (isset($LANG['EVENTID'])?$LANG['EVENTID']:'Event ID'); ?>: </label>
 								<?php
 								echo $occArr['eventid'];
 								?>
@@ -560,224 +574,231 @@ $traitArr = $indManager->getTraitArr();
 							$recByLabel = (isset($LANG['OBSERVER'])?$LANG['OBSERVER']:'Observer');
 							if($collMetadata['colltype'] == 'Preserved Specimens') $recByLabel = (isset($LANG['COLLECTOR'])?$LANG['COLLECTOR']:'Collector');
 							?>
-							<div>
-								<span class="label"><?php echo $recByLabel; ?>: </span>
+							<div id="recordedby-div">
+								<label><?php echo $recByLabel; ?>: </label>
 								<?php
 								$recByStr = $indManager->activateOrcidID($occArr['recordedby']);
 								echo $recByStr;
 								?>
 							</div>
 							<?php
-							if($occArr['recordnumber'] && (!$securityCode || $securityCode == 2)){
+							if($occArr['recordnumber']){
 								?>
-								<div style="margin-left:10px;">
-									<span class="label"><?php echo (isset($LANG['NUMBER'])?$LANG['NUMBER']:'Number'); ?>: </span>
+								<div id="recordnumber-div">
+									<label><?php echo (isset($LANG['NUMBER'])?$LANG['NUMBER']:'Number'); ?>: </label>
 									<?php echo $occArr['recordnumber']; ?>
 								</div>
 								<?php
 							}
 						}
-						if(!$securityCode || $securityCode == 2){
-							if($occArr['eventdate']){
-								echo '<div>';
-								echo '<span class="label">'.(isset($LANG['EVENTDATE'])?$LANG['EVENTDATE']:'Date').':</span> '.$occArr['eventdate'];
-								if($occArr['eventdateend'] && $occArr['eventdateend'] != $occArr['eventdate']){
-									echo ' - '.$occArr['eventdateend'];
-								}
-								echo '</div>';
+						if($occArr['eventdate']){
+							echo '<div id="eventdate-div">';
+							echo '<label>'.$LANG['DATE'].':</label> '.$occArr['eventdate'];
+							if($occArr['eventdate2'] && $occArr['eventdate2'] != $occArr['eventdate']){
+								echo ' - '.$occArr['eventdate2'];
 							}
-							if($occArr['verbatimeventdate']){
-								echo '<div><span class="label">'.(isset($LANG['VERBATIMDATE'])?$LANG['VERBATIMDATE']:'Verbatim Date').':</span> '.$occArr['verbatimeventdate'].'</div>';
+							elseif($occArr['eventdateend'] && $occArr['eventdateend'] != $occArr['eventdate']){
+								echo ' - '.$occArr['eventdateend'];
 							}
+							echo '</div>';
 						}
-						?>
-						<div>
-							<?php
-							if($occArr['associatedcollectors']){
-								?>
-								<div>
-									<?php
-									echo '<b>'.(isset($LANG['ADDITIONALCOLLECTORS'])?$LANG['ADDITIONALCOLLECTORS']:'Additional Collectors').': </b>';
-									echo $occArr['associatedcollectors'];
-									?>
-								</div>
-								<?php
-							}
+						if($occArr['verbatimeventdate']){
+							echo '<div id="verbeventid-div"><label>'.$LANG['VERBATIM_DATE'].':</label> '.$occArr['verbatimeventdate'].'</div>';
+						}
+						if($occArr['associatedcollectors']){
 							?>
-						</div>
-						<?php
-						$localityStr1 = '';
-						if($occArr['country']) $localityStr1 .= $occArr['country'].', ';
-						if($occArr['stateprovince']) $localityStr1 .= $occArr['stateprovince'].', ';
-						if($occArr['county']) $localityStr1 .= $occArr['county'].', ';
-						if($occArr['municipality']) $localityStr1 .= $occArr['municipality'].', ';
-						?>
-						<div>
+							<div id="assoccollectors-div">
+								<?php
+								echo '<label>'.$LANG['ADDITIONAL_COLLECTORS'].': </label>';
+								echo $occArr['associatedcollectors'];
+								?>
+							</div>
 							<?php
-							echo '<b>'.(isset($LANG['LOCALITY'])?$LANG['LOCALITY']:'Locality').':</b> ';
-							if($securityCode != 1){
-								$localityStr1 .= $occArr['locality'];
-								if($occArr['locationid']) $localityStr1 .= ' [locationID: '.$occArr['locationid'].']';
+						}
+						$localityArr = array();
+						if($occArr['country']) $localityArr[] = $occArr['country'];
+						if($occArr['stateprovince']) $localityArr[] = $occArr['stateprovince'];
+						if($occArr['county']) $localityArr[] = $occArr['county'];
+						if($occArr['municipality']) $localityArr[] = $occArr['municipality'];
+						?>
+						<div id="locality-div">
+							<?php
+							echo '<label>'.(isset($LANG['LOCALITY'])?$LANG['LOCALITY']:'Locality').':</label> ';
+							if(!isset($occArr['localsecure'])){
+								$locStr = $occArr['locality'];
+								if($occArr['locationid']) $locStr .= ' ['.(isset($LANG['LOCATION_ID'])?$LANG['LOCATION_ID']:'Location ID').': '.$occArr['locationid'].']';
+								$localityArr[] = $locStr;
 							}
-							else{
-								$localityStr1 .= '<span style="color:red;">'.(isset($LANG['LOCDETAILSPROTECTED'])?$LANG['LOCDETAILSPROTECTED']:'locality details protected');
-								if($occArr['localitysecurityreason']) $localityStr1 .= $occArr['localitysecurityreason'];
-								else $localityStr1 .= (isset($LANG['LOCPROTECTEXPLANATION'])?$LANG['LOCPROTECTEXPLANATION']:'typically done to protect locations of rare or threatened taxa');
-								$localityStr1 .= '</span>';
-							}
-							echo trim($localityStr1,',; ');
-							?>
-						</div>
-						<?php
-						if($securityCode != 1){
-							if($occArr['decimallatitude']){
-								?>
-								<div style="margin-left:10px;">
-									<?php
-									echo $occArr['decimallatitude'].'&nbsp;&nbsp;'.$occArr['decimallongitude'];
-									if($occArr['coordinateuncertaintyinmeters']) echo ' +-'.$occArr['coordinateuncertaintyinmeters'].'m.';
-									if($occArr['geodeticdatum']) echo '&nbsp;&nbsp;'.$occArr['geodeticdatum'];
-									?>
-								</div>
-								<?php
-							}
-							if($occArr['verbatimcoordinates']){
-								?>
-								<div style="margin-left:10px;">
-									<?php
-									echo '<b>'.(isset($LANG['VERBATIMCOORDINATES'])?$LANG['VERBATIMCOORDINATES']:'Verbatim Coordinates').': </b>';
-									echo $occArr['verbatimcoordinates'];
-									?>
-								</div>
-								<?php
-							}
-							if($occArr['locationremarks']){
-								?>
-								<div style="margin-left:10px;">
-									<?php
-									echo '<b>'.(isset($LANG['LOCATIONREMARKS'])?$LANG['LOCATIONREMARKS']:'Location Remarks').': </b>';
-									echo $occArr['locationremarks'];
-									?>
-								</div>
-								<?php
-							}
-							if($occArr['georeferenceremarks']){
-								?>
-								<div style="margin-left:10px;clear:both;">
-									<?php
-									echo '<b>'.(isset($LANG['GEOREFREMARKS'])?$LANG['GEOREFREMARKS']:'Georeference Remarks').': </b>';
-									echo $occArr['georeferenceremarks'];
-									?>
-								</div>
-								<?php
-							}
-							if($occArr['minimumelevationinmeters'] || $occArr['verbatimelevation']){
-								?>
-								<div style="margin-left:10px;">
-									<?php
-									echo '<b>'.(isset($LANG['ELEVATION'])?$LANG['ELEVATION']:'Elevation').': </b>';
-									echo $occArr['minimumelevationinmeters'];
-									if($occArr['maximumelevationinmeters']){
-										echo '-'.$occArr['maximumelevationinmeters'];
-									}
-									echo ' '.(isset($LANG['METERS'])?$LANG['METERS']:'meters');
-									if($occArr['verbatimelevation']){
-										?>
-										<span style="margin-left:20px">
-											<b><?php echo (isset($LANG['VERBATELEVATION'])?$LANG['VERBATELEVATION']:'Verbatim Elevation'); ?>: </b>
-											<?php echo $occArr['verbatimelevation']; ?>
-										</span>
-										<?php
-									}
-									else{
-										echo ' ('.round($occArr['minimumelevationinmeters']*3.28).($occArr['maximumelevationinmeters']?'-'.round($occArr['maximumelevationinmeters']*3.28):'');
-										echo (isset($LANG['FT'])?$LANG['FT']:'ft').')';
-									}
-									?>
-								</div>
-								<?php
-							}
-							if($occArr['minimumdepthinmeters'] || $occArr['verbatimdepth']){
-								?>
-								<div style="margin-left:10px;">
-									<?php
-									echo '<b>'.(isset($LANG['DEPTH'])?$LANG['DEPTH']:'Depth').': </b>';
-									echo $occArr['minimumdepthinmeters'];
-									if($occArr['maximumdepthinmeters']) echo '-'.$occArr['maximumdepthinmeters'];
-									echo ' '.(isset($LANG['METERS'])?$LANG['METERS']:'meters');
-									if($occArr['verbatimdepth']){
-										?>
-										<span style="margin-left:20px">
-											<?php
-											echo '<b>'.(isset($LANG['VERBATDEPTH'])?$LANG['VERBATDEPTH']:'Verbatim Depth').': </b>';
-											echo $occArr['verbatimdepth'];
-											?>
-										</span>
-										<?php
-									}
-									?>
-								</div>
-								<?php
-							}
+							echo implode(', ', $localityArr);
 							if($occArr['localitysecurity'] == 1){
-								echo '<div style="margin-left:10px;color:orange">';
-								echo (isset($LANG['LOCPROTECTION'])?$LANG['LOCPROTECTION']:'Locality protection applied for non-authorized users (current user: approved to view)');
+								echo '<div style="margin-left:10px"><span class="notice-span">'.$LANG['LOCALITY_PROTECTED'].':<span> ';
+								if($occArr['localitysecurityreason'] && substr($occArr['localitysecurityreason'],0,1) != '<') echo $occArr['localitysecurityreason'];
+								else echo $LANG['PROTECTED_REASON'];
+								if(!isset($occArr['localsecure'])) echo '<br/>'.(isset($LANG['ACCESS_GRANTED'])?$LANG['ACCESS_GRANTED']:'Current user has been granted access');
 								echo '</div>';
 							}
-							if($occArr['habitat']){
-								?>
-								<div>
-									<?php
-									echo '<b>'.(isset($LANG['HABITAT'])?$LANG['HABITAT']:'Habitat').': </b>';
-									echo $occArr['habitat'];
-									?>
-								</div>
+							?>
+						</div>
+						<?php
+						if($occArr['decimallatitude']){
+							?>
+							<div id="latlng-div">
 								<?php
-							}
-							if($occArr['substrate']){
+								echo $occArr['decimallatitude'].'&nbsp;&nbsp;'.$occArr['decimallongitude'];
+								if($occArr['coordinateuncertaintyinmeters']) echo ' +-'.$occArr['coordinateuncertaintyinmeters'].'m.';
+								if($occArr['geodeticdatum']) echo '&nbsp;&nbsp;'.$occArr['geodeticdatum'];
 								?>
-								<div>
-									<?php
-									echo '<b>'.(isset($LANG['SUBSTRATE'])?$LANG['SUBSTRATE']:'Substrate').': </b>';
-									echo $occArr['substrate'];
-									?>
-								</div>
+							</div>
+							<?php
+						}
+						if($occArr['verbatimcoordinates']){
+							?>
+							<div id="verbcoord-div">
 								<?php
-							}
-							if($occArr['associatedtaxa']){
+								echo '<label>'.$LANG['VERBATIM_COORDINATES'].': </label>';
+								echo $occArr['verbatimcoordinates'];
 								?>
-								<div>
-									<?php
-									echo '<b>'.(isset($LANG['ASSOCTAXA'])?$LANG['ASSOCTAXA']:'Associated Taxa').': </b>';
-									echo $occArr['associatedtaxa'];
-									?>
-								</div>
+							</div>
+							<?php
+						}
+						if($occArr['locationremarks']){
+							?>
+							<div id="locremarks-div">
 								<?php
-							}
+								echo '<label>'.$LANG['LOCATION_REMARKS'].': </label>';
+								echo $occArr['locationremarks'];
+								?>
+							</div>
+							<?php
+						}
+						if($occArr['georeferenceremarks']){
+							?>
+							<div id="georefremarks-div">
+								<?php
+								echo '<label>'.$LANG['GEOREF_REMARKS'].': </label>';
+								echo $occArr['georeferenceremarks'];
+								?>
+							</div>
+							<?php
+						}
+						if($occArr['minimumelevationinmeters'] || $occArr['verbatimelevation']){
+							?>
+							<div id="elev-div">
+								<?php
+								echo '<label>' . $LANG['ELEVATION'] . ': </label>';
+								echo $occArr['minimumelevationinmeters'];
+								if($occArr['maximumelevationinmeters']) echo '-' . $occArr['maximumelevationinmeters'];
+								echo ' '.$LANG['METERS'];
+								if($occArr['verbatimelevation']){
+									?>
+									<span style="margin-left:20px">
+										<label><?php echo $LANG['VERBATIM_ELEVATION']; ?>: </label>
+										<?php echo $occArr['verbatimelevation']; ?>
+									</span>
+									<?php
+								}
+								else{
+									echo ' ('.round($occArr['minimumelevationinmeters']*3.28).($occArr['maximumelevationinmeters']?'-'.round($occArr['maximumelevationinmeters']*3.28):'') . $LANG['FT'] . ')';
+								}
+								?>
+							</div>
+							<?php
+						}
+						if($occArr['minimumdepthinmeters'] || $occArr['verbatimdepth']){
+							?>
+							<div id="depth-div">
+								<?php
+								echo '<label>'.$LANG['DEPTH'].': </label>';
+								echo $occArr['minimumdepthinmeters'];
+								if($occArr['maximumdepthinmeters']) echo '-'.$occArr['maximumdepthinmeters'];
+								echo ' '.$LANG['METERS'];
+								if($occArr['verbatimdepth']){
+									?>
+									<span style="margin-left:20px">
+										<?php
+										echo '<label>'.$LANG['VERBATIM_DEPTH'].': </label>';
+										echo $occArr['verbatimdepth'];
+										?>
+									</span>
+									<?php
+								}
+								?>
+							</div>
+							<?php
+						}
+						if($occArr['informationwithheld']){
+							?>
+							<div id="infowithheld-div">
+								<?php
+								echo '<label>'.$LANG['INFO_WITHHELD'].': </label>';
+								echo $occArr['informationwithheld'];
+								?>
+							</div>
+							<?php
+						}
+						if($occArr['habitat']){
+							?>
+							<div id="habitat-div">
+								<?php
+								echo '<label>'.$LANG['HABITAT'].': </label>';
+								echo $occArr['habitat'];
+								?>
+							</div>
+							<?php
+						}
+						if($occArr['substrate']){
+							?>
+							<div id="substrate-div">
+								<?php
+								echo '<label>'.$LANG['SUBSTRATE'].': </label>';
+								echo $occArr['substrate'];
+								?>
+							</div>
+							<?php
+						}
+						if($occArr['associatedtaxa']){
+							?>
+							<div id="assoctaxa-div">
+								<?php
+								echo '<label>'.$LANG['ASSOCIATED_TAXA'].': </label>';
+								echo $occArr['associatedtaxa'];
+								?>
+							</div>
+							<?php
 						}
 						if($occArr['verbatimattributes']){
 							?>
-							<div>
+							<div id="attr-div">
 								<?php
-								echo '<b>'.(isset($LANG['DESCRIPTION'])?$LANG['DESCRIPTION']:'Description').': </b>';
+								echo '<label>'.$LANG['DESCRIPTION'].': </label>';
 								echo $occArr['verbatimattributes'];
+								?>
+							</div>
+							<?php
+						}
+						if($occArr['dynamicproperties']){
+							?>
+							<div id="dynprop-div">
+								<?php
+								echo '<label>'.$LANG['DYNAMIC_PROPERTIES'].': </label>';
+								echo $occArr['dynamicproperties'];
 								?>
 							</div>
 							<?php
 						}
 						if($occArr['reproductivecondition']){
 							?>
-							<div>
-								<b><?php echo (isset($LANG['REPROCONDITION'])?$LANG['REPROCONDITION']:'Reproductive Condition'); ?>:</b>
+							<div id="reproductive-div">
+								<label><?php echo $LANG['REPRODUCTIVE_CONDITION']; ?>:</label>
 								<?php echo $occArr['reproductivecondition']; ?>
 							</div>
 							<?php
 						}
 						if($occArr['lifestage']){
 							?>
-							<div>
+							<div id="lifestage-div">
 								<?php
-								echo '<b>'.(isset($LANG['LIFESTAGE'])?$LANG['LIFESTAGE']:'Life Stage').': </b>';
+								echo '<label>'.$LANG['LIFE_STAGE'].': </label>';
 								echo $occArr['lifestage'];
 								?>
 							</div>
@@ -785,32 +806,32 @@ $traitArr = $indManager->getTraitArr();
 						}
 						if($occArr['sex']){
 							?>
-							<div>
-								<b><?php echo (isset($LANG['SEX'])?$LANG['SEX']:'Sex'); ?>:</b>
+							<div id="sex-div">
+								<label><?php echo $LANG['SEX']; ?>:</label>
 								<?php echo $occArr['sex']; ?>
 							</div>
 							<?php
 						}
 						if($occArr['individualcount']){
 							?>
-							<div>
-								<b><?php echo (isset($LANG['INDCOUNT'])?$LANG['INDCOUNT']:'Individual Count'); ?>:</b>
+							<div id="indcnt-div">
+								<label><?php echo $LANG['INDIVIDUAL_COUNT']; ?>:</label>
 								<?php echo $occArr['individualcount']; ?>
 							</div>
 							<?php
 						}
 						if($occArr['samplingprotocol']){
 							?>
-							<div>
-								<b><?php echo (isset($LANG['SAMPPROTOCOL'])?$LANG['SAMPPROTOCOL']:'Sampling Protocol'); ?>:</b>
+							<div id="sampleprotocol-div">
+								<label><?php echo $LANG['SAMPLE_PROTOCOL']; ?>:</label>
 								<?php echo $occArr['samplingprotocol']; ?>
 							</div>
 							<?php
 						}
 						if($occArr['preparations']){
 							?>
-							<div>
-								<b><?php echo (isset($LANG['PREPARATIONS'])?$LANG['PREPARATIONS']:'Preparations'); ?>:</b>
+							<div id="preparations-div">
+								<label><?php echo $LANG['PREPARATIONS']; ?>:</label>
 								<?php echo $occArr['preparations']; ?>
 							</div>
 							<?php
@@ -821,24 +842,24 @@ $traitArr = $indManager->getTraitArr();
 						if($occArr['cultivationstatus']) $noteStr .= "; Cultivated or Captive";
 						if($noteStr){
 							?>
-							<div>
-								<b><?php echo (isset($LANG['NOTES'])?$LANG['NOTES']:'Notes'); ?>:</b>
+							<div id="notes-div">
+								<label><?php echo $LANG['NOTES']; ?>:</label>
 								<?php echo substr($noteStr,2); ?>
 							</div>
 							<?php
 						}
 						if($occArr['disposition']){
 							?>
-							<div>
-								<b><?php echo (isset($LANG['DISPOSITION'])?$LANG['DISPOSITION']:'Disposition'); ?>: </b>
+							<div id="disposition-div">
+								<label><?php echo $LANG['DISPOSITION']; ?>: </label>
 								<?php echo $occArr['disposition']; ?>
 							</div>
 							<?php
 						}
 						if(isset($occArr['paleoid'])){
 							?>
-							<div>
-								<b><?php echo (isset($LANG['PALEOTERMS'])?$LANG['PALEOTERMS']:'Paleontology Terms'); ?>: </b>
+							<div id="paleo-div">
+								<label><?php echo $LANG['PALEO_TERMS']; ?>: </label>
 								<?php
 								$paleoStr1 = '';
 								if($occArr['eon']) $paleoStr1 .= '; '.$occArr['eon'];
@@ -852,21 +873,21 @@ $traitArr = $indManager->getTraitArr();
 								?>
 								<div style="margin-left:10px">
 									<?php
-									if($occArr['absoluteage']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['ABSOLUTEAGE'])?$LANG['ABSOLUTEAGE']:'Absolute Age').':</b> '.$occArr['absoluteage'].'</div>';
-									if($occArr['storageage']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['STORAGEAGE'])?$LANG['STORAGEAGE']:'Storage Age').':</b> '.$occArr['storageage'].'</div>';
-									if($occArr['localstage']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['LOCALSTAGE'])?$LANG['LOCALSTAGE']:'Local Stage').':</b> '.$occArr['localstage'].'</div>';
-									if($occArr['biota']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['BIOTA'])?$LANG['BIOTA']:'Biota').':</b> '.$occArr['biota'].'</div>';
-									if($occArr['biostratigraphy']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['BIOSTRAT'])?$LANG['BIOSTRAT']:'Biostratigraphy').':</b> '.$occArr['biostratigraphy'].'</div>';
-									if($occArr['lithogroup']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['GROUP'])?$LANG['GROUP']:'Group').':</b> '.$occArr['lithogroup'].'</div>';
-									if($occArr['formation']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['FORMATION'])?$LANG['FORMATION']:'Formation').':</b> '.$occArr['formation'].'</div>';
-									if($occArr['taxonenvironment']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['TAXENVIR'])?$LANG['TAXENVIR']:'Taxon Environment').':</b> '.$occArr['taxonenvironment'].'</div>';
-									if($occArr['member']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['MEMBER'])?$LANG['MEMBER']:'Member').':</b> '.$occArr['member'].'</div>';
-									if($occArr['bed']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['BED'])?$LANG['BED']:'Bed').':</b> '.$occArr['bed'].'</div>';
-									if($occArr['lithology']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['LITHOLOGY'])?$LANG['LITHOLOGY']:'Lithology').':</b> '.$occArr['lithology'].'</div>';
-									if($occArr['stratremarks']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['STRATREMARKS'])?$LANG['STRATREMARKS']:'Remarks').':</b> '.$occArr['stratremarks'].'</div>';
-									if($occArr['element']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['ELEMENT'])?$LANG['ELEMENT']:'Element').':</b> '.$occArr['element'].'</div>';
-									if($occArr['slideproperties']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['SLIDEPROPS'])?$LANG['SLIDEPROPS']:'Slide Properties').':</b> '.$occArr['slideproperties'].'</div>';
-									if($occArr['geologicalcontextid']) echo '<div style="float:left;margin-right:25px"><b>.'(isset($LANG['CONTEXTID'])?$LANG['CONTEXTID']:'Context ID').':</b> '.$occArr['geologicalcontextid'].'</div>';
+									if($occArr['absoluteage']) echo '<div class="paleofield-div"><label>'.$LANG['ABSOLUTE_AGE'].':</label> '.$occArr['absoluteage'].'</div>';
+									if($occArr['storageage']) echo '<div class="paleofield-div"><label>'.$LANG['STORAGE_AGE'].':</label> '.$occArr['storageage'].'</div>';
+									if($occArr['localstage']) echo '<div class="paleofield-div"><label>'.$LANG['LOCAL_STAGE'].':</label> '.$occArr['localstage'].'</div>';
+									if($occArr['biota']) echo '<div class="paleofield-div"><label>'.$LANG['BIOTA'].':</label> '.$occArr['biota'].'</div>';
+									if($occArr['biostratigraphy']) echo '<div class="paleofield-div"><label>'.$LANG['BIO_STRAT'].':</label> '.$occArr['biostratigraphy'].'</div>';
+									if($occArr['lithogroup']) echo '<div class="paleofield-div"><label>'.(isset($LANG['GROUP'])?$LANG['GROUP']:'Group').':</label> '.$occArr['lithogroup'].'</div>';
+									if($occArr['formation']) echo '<div class="paleofield-div"><label>'.$LANG['FORMATION'].':</label> '.$occArr['formation'].'</div>';
+									if($occArr['taxonenvironment']) echo '<div class="paleofield-div"><label>'.$LANG['TAXON_ENVIR'].':</label> '.$occArr['taxonenvironment'].'</div>';
+									if($occArr['member']) echo '<div class="paleofield-div"><label>'.$LANG['MEMBER'].':</label> '.$occArr['member'].'</div>';
+									if($occArr['bed']) echo '<div class="paleofield-div"><label>'.$LANG['BED'].':</label> '.$occArr['bed'].'</div>';
+									if($occArr['lithology']) echo '<div class="paleofield-div"><label>'.$LANG['LITHOLOGY'].':</label> '.$occArr['lithology'].'</div>';
+									if($occArr['stratremarks']) echo '<div class="paleofield-div"><label>'.$LANG['STRAT_REMARKS'].':</label> '.$occArr['stratremarks'].'</div>';
+									if($occArr['element']) echo '<div class="paleofield-div"><label>'.$LANG['ELEMENT'].':</label> '.$occArr['element'].'</div>';
+									if($occArr['slideproperties']) echo '<div class="paleofield-div"><label>'.$LANG['SLIDE_PROPS'].':</label> '.$occArr['slideproperties'].'</div>';
+									if($occArr['geologicalcontextid']) echo '<div class="paleofield-div"><label>'.$LANG['CONTEXT_ID'].':</label> '.$occArr['geologicalcontextid'].'</div>';
 									?>
 								</div>
 							</div>
@@ -874,8 +895,8 @@ $traitArr = $indManager->getTraitArr();
 						}
 						if(isset($occArr['exs'])){
 							?>
-							<div>
-								<b><?php echo (isset($LANG['EXSERIES'])?$LANG['EXSERIES']:'Exsiccati series'); ?>:</b>
+							<div id="exsiccati-div">
+								<label><?php echo $LANG['EXCICCATI_SERIES']; ?>:</label>
 								<?php
 								echo '<a href="../exsiccati/index.php?omenid='.$occArr['exs']['omenid'].'" target="_blank">';
 								echo $occArr['exs']['title'].'&nbsp;#'.$occArr['exs']['exsnumber'];
@@ -884,15 +905,35 @@ $traitArr = $indManager->getTraitArr();
 							</div>
 							<?php
 						}
-						?>
-					</div>
-					<div style="clear:both;margin-left:60px;">
-						<?php
-						if(!$securityCode && array_key_exists('imgs',$occArr)){
+						if(array_key_exists('matSample',$occArr)){
+							$matSampleArr = $occArr['matSample'];
+							$msCnt = 0;
+							$msKey = 0;
+							echo '<fieldset><legend>'.$LANG['MATERIAL_SAMPLES'].'</legend>';
+							do{
+								if($msKey = key($matSampleArr)){
+									echo '<div class="mat-sample-div" style="'.($msCnt?'display:none':'').'">';
+									foreach($matSampleArr[$msKey] as $msLabelKey => $msValue){
+										if($msValue && isset($MS_LABEL_ARR[$msLabelKey])) echo '<div><label>'.$MS_LABEL_ARR[$msLabelKey].'</label>: '.$msValue.'</div>';
+									}
+									echo '<hr>';
+									echo '</div>';
+									if(!$msCnt && count($matSampleArr) > 1){
+										echo '<div id="mat-sample-more-div" >';
+										echo '<a href="#" onclick="displayAllMaterialSamples();return false;">';
+										echo $LANG['DISPLAY_ALL_MATERIAL_SAMPLES'];
+										echo '</a></div>';
+									}
+								}
+								$msCnt++;
+							}while(next($matSampleArr));
+							echo '</fieldset>';
+						}
+						if(array_key_exists('imgs',$occArr)){
 							$iArr = $occArr['imgs'];
 							?>
-							<fieldset style="clear:both;margin:10px 0px">
-								<legend><?php echo (isset($LANG['SPECIMAGES'])?$LANG['SPECIMAGES']:'Specimen Images'); ?></legend>
+							<fieldset>
+								<legend><?php echo $LANG['SPECIMEN_IMAGES']; ?></legend>
 								<?php
 								foreach($iArr as $imgArr){
 									$thumbUrl = $imgArr['tnurl'];
@@ -904,15 +945,16 @@ $traitArr = $indManager->getTraitArr();
 										else $thumbUrl = $imgArr['lgurl'];
 									}
 									?>
-									<div class="imgDiv">
+									<div class="thumbnail-div">
 										<a href='<?php echo $imgArr['url']; ?>' target="_blank">
 											<img border="1" src="<?php echo $thumbUrl; ?>" title="<?php echo $imgArr['caption']; ?>" style="max-width:170;" />
 										</a>
 										<?php
-										if($imgArr['photographer']) echo '<div>'.(isset($LANG['AUTHOR'])?$LANG['AUTHOR']:'Author').':'.$imgArr['photographer'].'</div>';
-										if($imgArr['url'] && substr($thumbUrl,0,7)!='process' && $imgArr['url'] != $imgArr['lgurl']) echo '<div><a href="'.$imgArr['url'].'" target="_blank">'.(isset($LANG['OPENMED'])?$LANG['OPENMED']:'Open Medium Image').'</a></div>';
-										if($imgArr['lgurl']) echo '<div><a href="'.$imgArr['lgurl'].'" target="_blank">'.(isset($LANG['OPENLARGE'])?$LANG['OPENLARGE']:'Open Large Image').'</a></div>';
-										if($imgArr['sourceurl']) echo '<div><a href="'.$imgArr['sourceurl'].'" target="_blank">'.(isset($LANG['OPENSRC'])?$LANG['OPENSRC']:'Open Source Image').'</a></div>';
+										if($imgArr['caption']) echo '<div><i>'.$imgArr['caption'].'</i></div>';
+										if($imgArr['photographer']) echo '<div>'.(isset($LANG['AUTHOR'])?$LANG['AUTHOR']:'Author').': '.$imgArr['photographer'].'</div>';
+										if($imgArr['url'] && substr($thumbUrl,0,7)!='process' && $imgArr['url'] != $imgArr['lgurl']) echo '<div><a href="'.$imgArr['url'].'" target="_blank">'.$LANG['OPEN_MEDIUM'].'</a></div>';
+										if($imgArr['lgurl']) echo '<div><a href="'.$imgArr['lgurl'].'" target="_blank">'.$LANG['OPEN_LARGE'].'</a></div>';
+										if($imgArr['sourceurl']) echo '<div><a href="'.$imgArr['sourceurl'].'" target="_blank">'.$LANG['OPEN_SOURCE'].'</a></div>';
 										?>
 									</div>
 									<?php
@@ -920,51 +962,6 @@ $traitArr = $indManager->getTraitArr();
 								?>
 							</fieldset>
 							<?php
-						}
-						if($collMetadata['individualurl']){
-							$sourceTitle = 'Source Record';
-							$iUrl = trim($collMetadata['individualurl']);
-							if(substr($iUrl, 0, 4) != 'http'){
-								if($pos = strpos($iUrl, ':')){
-									$sourceTitle = substr($iUrl, 0, $pos);
-									$iUrl = trim(substr($iUrl, $pos+1));
-								}
-							}
-							$displayStr = '';
-							$indUrl = '';
-							if(strpos($iUrl,'--DBPK--') !== false && $occArr['dbpk']){
-								$indUrl = str_replace('--DBPK--',$occArr['dbpk'],$iUrl);
-								$displayStr = $indUrl;
-							}
-							elseif(strpos($iUrl,'--CATALOGNUMBER--') !== false && $occArr['catalognumber']){
-								$displayStr = $occArr['catalognumber'];
-								$indUrl = str_replace('--CATALOGNUMBER--',$occArr['catalognumber'],$iUrl);
-							}
-							elseif(strpos($iUrl,'--OTHERCATALOGNUMBERS--') !== false && $occArr['othercatalognumbers']){
-								if(substr($occArr['othercatalognumbers'],0,1) == '{'){
-									if($ocnArr = json_decode($occArr['othercatalognumbers'],true)){
-										foreach($ocnArr as $idKey => $idArr){
-											if(!$displayStr || ($idKey && $idKey == 'NEON sampleID')){
-												$displayStr = $idArr[0];
-												$indUrl = str_replace('--OTHERCATALOGNUMBERS--',$idArr[0],$iUrl);
-											}
-										}
-									}
-								}
-								else{
-									$ocn = str_replace($occArr['othercatalognumbers'], ',', ';');
-									$ocnArr = explode(';',$ocn);
-									$ocnValue = trim(array_pop($ocnArr));
-									if(stripos($ocnValue,':')) $ocnValue = trim(array_pop(explode(':',$ocnValue)));
-									$displayStr = $ocnValue;
-									$indUrl = str_replace('--OTHERCATALOGNUMBERS--',$ocnValue,$iUrl);
-								}
-							}
-							elseif(strpos($iUrl,'--OCCURRENCEID--') !== false && $occArr['occurrenceid']){
-								$displayStr = $occArr['occurrenceid'];
-								$indUrl = str_replace('--OCCURRENCEID--',$occArr['occurrenceid'],$iUrl);
-							}
-							if($displayStr) echo '<div style="margin-top:10px;clear:both;"><b>'.$sourceTitle.':</b> <a href="'.$indUrl.'" target="_blank">'.$displayStr.'</a></div>';
 						}
 						//Rights
 						$rightsStr = $collMetadata['rights'];
@@ -974,32 +971,74 @@ $traitArr = $indManager->getTraitArr();
 							if(substr($collMetadata['rights'],0,4) == 'http'){
 								$rightsStr = '<a href="'.$rightsStr.'" target="_blank">'.($rightsHeading?$rightsHeading:$rightsStr).'</a>';
 							}
-							$rightsStr = '<div style="margin-top:2px;"><b>'.(isset($LANG['USAGERIGHTS'])?$LANG['USAGERIGHTS']:'Usage Rights').':</b> '.$rightsStr.'</div>';
+							$rightsStr = '<div style="margin-top:2px;"><label>'.$LANG['USAGE_RIGHTS'].':</label> '.$rightsStr.'</div>';
 						}
 						if($collMetadata['rightsholder']){
-							$rightsStr .= '<div style="margin-top:2px;"><b>'.(isset($LANG['RIGHTSHOLDER'])?$LANG['RIGHTSHOLDER']:'Rights Holder').':</b> '.$collMetadata['rightsholder'].'</div>';
+							$rightsStr .= '<div style="margin-top:2px;"><label>'.$LANG['RIGHTS_HOLDER'].':</label> '.$collMetadata['rightsholder'].'</div>';
 						}
 						if($collMetadata['accessrights']){
-							$rightsStr .= '<div style="margin-top:2px;"><b>'.(isset($LANG['ACCESSRIGHTS'])?$LANG['ACCESSRIGHTS']:'Access Rights').':</b> '.$collMetadata['accessrights'].'</div>';
+							$rightsStr .= '<div style="margin-top:2px;"><label>'.$LANG['ACCESS_RIGHTS'].':</label> '.$collMetadata['accessrights'].'</div>';
 						}
 						?>
-						<div style="margin:5px 0px 5px 0px;">
+						<div id="rights-div">
 							<?php
 							if($rightsStr) echo $rightsStr;
-							else echo '<a href="../../includes/usagepolicy.php">'.(isset($LANG['USAGEPOLICY'])?$LANG['USAGEPOLICY']:'General Data Usage Policy').'</a>';
+							else echo '<a href="../../includes/usagepolicy.php">'.$LANG['USAGE_POLICY'].'</a>';
 							?>
 						</div>
-						<div style="margin:3px 0px;"><?php echo '<b>'.(isset($LANG['RECORDID'])?$LANG['RECORDID']:'Record ID').': </b>'.$occArr['guid']; ?></div>
-						<div style="margin-top:10px;clear:both;">
+						<div style="margin:3px 0px;"><?php echo '<label>'.$LANG['RECORD_ID'].': </label>'.$occArr['recordid']; ?></div>
+						<?php
+						if(isset($occArr['source'])){
+							$recordType = (isset($occArr['source']['type'])?$occArr['source']['type']:'');
+							$displayTitle = $LANG['SOURCE_RECORD'];
+							if(isset($occArr['source']['title'])) $displayTitle = $occArr['source']['title'];
+							$displayStr = $occArr['source']['url'];
+							if(isset($occArr['source']['displayStr'])) $displayStr = $occArr['source']['displayStr'];
+							elseif(isset($occArr['source']['sourceID'])) $displayStr = '#'.$occArr['source']['sourceID'];
+							if($recordType == 'symbiota') echo '<fieldset><legend>Externally Managed Snapshot Record</legend>';
+							echo '<div><label>'.$displayTitle.':</label> <a href="'.$occArr['source']['url'].'" target="_blank">'.$displayStr.'</a></div>';
+							echo '<div style="float:left;">';
+							if(isset($occArr['source']['sourceName'])){
+								echo '<div><label>'.$LANG['DATA_SOURCE'].':</label> '.$occArr['source']['sourceName'].'</div>';
+								if($recordType == 'symbiota') echo '<div><label>Source management:</label> Live managed record within a Symbiota portal</div>';
+							}
+							if(array_key_exists('fieldsModified',$_POST)){
+								echo '<div><label>'.$LANG['REFRESH_DATE'].':</label> '.(isset($occArr['source']['refreshTimestamp'])?$occArr['source']['refreshTimestamp']:'').'</div>';
+								//Input from refersh event
+								$dataStatus = filter_var($_POST['dataStatus'], FILTER_SANITIZE_STRING);
+								$fieldsModified = filter_var($_POST['fieldsModified'], FILTER_SANITIZE_STRING);
+								$sourceDateLastModified = filter_var($_POST['sourceDateLastModified'], FILTER_SANITIZE_STRING);
+								echo '<div><label>'.$LANG['UPDATE_STATUS'].':</label> '.$dataStatus.'</div>';
+								echo '<div><label>'.$LANG['FIELDS_MODIFIED'].':</label> '.$fieldsModified.'</div>';
+								echo '<div><label>'.$LANG['SOURCE_DATE_LAST_MODIFIED'].':</label> '.$sourceDateLastModified.'</div>';
+							}
+							echo '</div>';
+							if($SYMB_UID && $recordType == 'symbiota'){
+								?>
+								<div style="float:left;margin-left:30px;">
+									<button name="formsubmit" type="submit" onclick="refreshRecord(<?php echo $occid; ?>)"><?php echo $LANG['REFRESH_RECORD']; ?></button>
+								</div>
+								<form id="refreshForm" action="index.php" method="post">
+									<input id="dataStatus" name="dataStatus" type="hidden" value="" >
+									<input id="fieldsModified" name="fieldsModified" type="hidden" value="" >
+									<input id="sourceDateLastModified" name="sourceDateLastModified" type="hidden" value="" >
+									<input name="occid" type="hidden" value="<?php echo $occid; ?>" >
+									<input name="clid" type="hidden" value="<?php echo $clid; ?>" >
+									<input name="collid" type="hidden" value="<?php echo $collid; ?>" >
+								</form>
+								<?php
+							}
+							if($recordType == 'symbiota') echo '</fieldset>';
+						}
+						?>
+						<div id="contact-div">
 							<?php
 							if($collMetadata['contact']){
-								echo (isset($LANG['ADDITIONALINFO'])?$LANG['ADDITIONALINFO']:'For additional information about this specimen, please contact').':'.$collMetadata['contact'];
+								echo $LANG['ADDITIONAL_INFO'].': '.$collMetadata['contact'];
 								if($collMetadata['email']){
 									$emailSubject = $DEFAULT_TITLE.' occurrence: '.$occArr['catalognumber'].' ('.$occArr['othercatalognumbers'].')';
-									$refPath = 'http://';
-									if((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $_SERVER['SERVER_PORT'] == 443) $refPath = 'https://';
-									$refPath .= $_SERVER['SERVER_NAME'].$CLIENT_ROOT.'/collections/individual/index.php?occid='.$occArr['occid'];
-									$emailBody = (isset($LANG['SPECREFERENCED'])?$LANG['SPECREFERENCED']:'Specimen being referenced').': '.$refPath;
+									$refPath = $indManager->getDomain().$CLIENT_ROOT.'/collections/individual/index.php?occid='.$occArr['occid'];
+									$emailBody = $LANG['SPECIMEN_REFERENCED'].': '.$refPath;
 									$emailRef = 'subject='.$emailSubject.'&cc='.$ADMIN_EMAIL.'&body='.$emailBody;
 									echo ' (<a href="mailto:'.$collMetadata['email'].'?'.$emailRef.'">'.$collMetadata['email'].'</a>)';
 								}
@@ -1007,20 +1046,23 @@ $traitArr = $indManager->getTraitArr();
 							?>
 						</div>
 						<?php
-						if($isEditor || (!$securityCode && $collMetadata['publicedits'])){
+						if($isEditor || ($collMetadata['publicedits'])){
 							?>
-							<div style="margin-bottom:10px;">
+							<div id="openeditor-div" style="margin-bottom:10px;">
 								<?php
 								if($SYMB_UID){
-									echo (isset($LANG['SEEERROR'])?$LANG['SEEERROR']:'Do you see an error? If so, errors can be fixed using the').' ';
+									echo $LANG['SEE_ERROR'].' ';
 									?>
 									<a href="../editor/occurrenceeditor.php?occid=<?php echo $occArr['occid'];?>">
-										<?php echo (isset($LANG['OCCEDITOR'])?$LANG['OCCEDITOR']:'Occurrence Editor'); ?>.
+										<?php echo $LANG['OCCURRENCE_EDITOR']; ?>.
 									</a>
 									<?php
 								}
 								else{
-									echo (isset($LANG['SEEANERROR'])?$LANG['SEEANERROR']:'See an error?'); ?> <a href="../../profile/index.php?refurl=../collections/individual/index.php?occid=<?php echo $occid; ?>"><?php echo (isset($LANG['LOGIN'])?$LANG['LOGIN']:'Log In'); ?></a> <?php echo (isset($LANG['TOEDITDATA'])?$LANG['TOEDITDATA']:'to edit data');
+									echo $LANG['SEE_AN_ERROR']; ?>
+									<a href="../../profile/index.php?refurl=../collections/individual/index.php?occid=<?php echo $occid; ?>">
+										<?php echo $LANG['LOGIN']; ?>
+									</a> <?php echo $LANG['TO_EDIT_DATA'];
 								}
 								?>
 							</div>
@@ -1029,7 +1071,7 @@ $traitArr = $indManager->getTraitArr();
 						if(array_key_exists('ref',$occArr)){
 							?>
 							<fieldset>
-								<legend><?php echo (isset($LANG['ASSOCREFS'])?$LANG['ASSOCREFS']:'Associated References'); ?></legend>
+								<legend><?php echo $LANG['ASSOCIATED_REFS']; ?></legend>
 								<?php
 								foreach($occArr['ref'] as $refid => $refArr){
 									echo '<div class="occur-ref">';
@@ -1061,13 +1103,13 @@ $traitArr = $indManager->getTraitArr();
 							?>
 							<div style="margin:15px;">
 								<div style="font-weight:bold;margin-bottom:5px;"><?php echo $gArr['name']; ?></div>
-								<div style="margin-left:15px;"><b><?php echo (isset($LANG['IDENTIFIER'])?$LANG['IDENTIFIER']:'Identifier'); ?>:</b> <?php echo $gArr['id']; ?></div>
-								<div style="margin-left:15px;"><b><?php echo (isset($LANG['LOCUS'])?$LANG['LOCUS']:'Locus'); ?>:</b> <?php echo $gArr['locus']; ?></div>
+								<div style="margin-left:15px;"><label><?php echo $LANG['IDENTIFIER']; ?>:</label> <?php echo $gArr['id']; ?></div>
+								<div style="margin-left:15px;"><label><?php echo $LANG['LOCUS']; ?>:</label> <?php echo $gArr['locus']; ?></div>
 								<div style="margin-left:15px;">
-									<b>URL:</b>
+									<label>URL:</label>
 									<a href="<?php echo $gArr['resourceurl']; ?>" target="_blank"><?php echo $gArr['resourceurl']; ?></a>
 								</div>
-								<div style="margin-left:15px;"><b><?php echo (isset($LANG['NOTES'])?$LANG['NOTES']:'Notes'); ?>:</b> <?php echo $gArr['notes']; ?></div>
+								<div style="margin-left:15px;"><label><?php echo $LANG['NOTES']; ?>:</label> <?php echo $gArr['notes']; ?></div>
 							</div>
 							<?php
 						}
@@ -1077,72 +1119,51 @@ $traitArr = $indManager->getTraitArr();
 				}
 				if($dupClusterArr){
 					?>
-					<div id="dupestab">
-						<div style="margin:15px;">
-							<div class="title" style="margin-bottom:10px;text-decoration:underline"><?php echo (isset($LANG['CURRENTRECORD'])?$LANG['CURRENTRECORD']:'Current Record'); ?></div>
-							<?php
-							echo '<div class="title">'.$collMetadata['collectionname'].' ('.$collMetadata['institutioncode'].($collMetadata['collectioncode']?':'.$collMetadata['collectioncode']:'').')</div>';
-							echo '<div style="margin:5px 15px">';
-							if($occArr['recordedby']) echo '<div>'.$occArr['recordedby'].' '.$occArr['recordnumber'].'<span style="margin-left:40px;">'.$occArr['eventdate'].'</span></div>';
-							if($occArr['catalognumber']) echo '<div><span class="label">'.(isset($LANG['CATALOGNUMBER'])?$LANG['CATALOGNUMBER']:'Catalog Number').':</span> '.$occArr['catalognumber'].'</div>';
-							if($occArr['occurrenceid']) echo '<div><span class="label">'.(isset($LANG['GUID'])?$LANG['GUID']:'GUID').':</span> '.$occArr['occurrenceid'].'</div>';
-							echo '<div><span class="label">'.(isset($LANG['LATESTID'])?$LANG['LATEST']:'Latest Identification').':</span> ';
-							if($securityCode < 2) echo '<i>'.$occArr['sciname'].'</i> '.$occArr['scientificnameauthorship'];
-							else echo (isset($LANG['SPECIDPROTECTED'])?$LANG['SPECIDPROTECTED']:'Species identification protected');
-							echo '</div>';
-							if($occArr['identifiedby']) echo '<div><span class="label">'.(isset($LANG['IDENTIFIEDBY'])?$LANG['IDENTIFIEDBY']:'Identified by').':</span> '.$occArr['identifiedby'].'<span stlye="margin-left:30px;">'.$occArr['dateidentified'].'</span></div>';
-							echo '</div>';
-							//Grab other records
-							foreach($dupClusterArr as $dupeType => $dupeArr){
-								echo '<fieldset style="padding:10px">';
-								echo '<legend>';
-								if($dupeType=='dupe') echo (isset($LANG['DUPES'])?$LANG['DUPES']:'Specimen Duplicates');
-								else echo (isset($LANG['EXSICCATAE'])?$LANG['EXSICCATAE']:'Associated Exsiccatae');
-								echo '</legend>';
-								foreach($dupeArr as $dupOccid => $dupArr){
-									if($dupOccid != $occid){
-										echo '<div style="clear:both;margin:15px;">';
-										echo '<div style="float:left;margin:5px 15px">';
-										echo '<div class="title">'.$dupArr['collname'].' ('.$dupArr['instcode'].($dupArr['collcode']?':'.$dupArr['collcode']:'').')</div>';
-										if($dupArr['recordedby']) echo '<div>'.$dupArr['recordedby'].' '.$dupArr['recordnumber'].'<span style="margin-left:40px;">'.$dupArr['eventdate'].'</span></div>';
-										if($dupArr['catalognumber']) echo '<div><span class="label">'.(isset($LANG['CATALOGNUMBER'])?$LANG['CATALOGNUMBER']:'Catalog Number').':</span> '.$dupArr['catalognumber'].'</div>';
-										if($dupArr['occurrenceid']) echo '<div><span class="label">'.(isset($LANG['GUID'])?$LANG['GUID']:'GUID').':</span> '.$dupArr['occurrenceid'].'</div>';
-										echo '<div><span class="label">'.(isset($LANG['LATESTID'])?$LANG['LATESTID']:'Latest Identification').':</span> ';
-										if($securityCode < 2) echo '<i>'.$dupArr['sciname'].'</i> '.$dupArr['author'];
-										else echo (isset($LANG['SPECIDPROTECTED'])?$LANG['SPECIDPROTECTED']:'Species identification protected');
-										echo '</div>';
-										if($dupArr['identifiedby']) echo '<div><span class="label">'.(isset($LANG['IDENTIFIEDBY'])?$LANG['IDENTIFIEDBY']:'Identified by').':</span> '.$dupArr['identifiedby'].'<span stlye="margin-left:30px;">'.$dupArr['dateidentified'].'</span></div>';
-										echo '<div><a href="#" onclick="openIndividual('.$dupOccid.');return false;">'.(isset($LANG['SHOWFULLDETAILS'])?$LANG['SHOWFULLDETAILS']:'Show Full Details').'</a></div>';
-										echo '</div>';
-										if(!$securityCode){
-											if($dupArr['url']){
-												$url = $dupArr['url'];
-												if($IMAGE_DOMAIN) if(substr($url,0,1) == '/') $url = $IMAGE_DOMAIN.$url;
-												echo '<div style="float:right;margin:10px;"><img src="'.$url.'" style="width:70px;border:1px solid grey" /></div>';
-											}
-										}
-										echo '<div style="margin:10px 0px;clear:both"><hr/></div>';
-										echo '</div>';
-									}
-								}
-								echo '</fieldset>';
-							}
-							?>
-						</div>
-					</div>
-					<?php
-				}
-				if($traitArr){
-					?>
-					<div id="traittab">
+					<div id="dupestab-div">
+						<div class="title2-div" style="margin-bottom:10px;text-decoration:underline"><?php echo $LANG['CURRENT_RECORD']; ?></div>
 						<?php
-						foreach($traitArr as $traitID => $tArr){
-							if(!$tArr['depStateID']){
-								echo '<div class="traitDiv">';
-								$indManager->echoTraitUnit($traitArr[$traitID]);
-								$indManager->echoTraitDiv($traitArr,$traitID);
-								echo '</div>';
+						echo '<div class="title2-div>'.$collMetadata['collectionname'].' ('.$collMetadata['institutioncode'].($collMetadata['collectioncode']?':'.$collMetadata['collectioncode']:'').')</div>';
+						echo '<div style="margin:5px 15px">';
+						if($occArr['recordedby']) echo '<div>'.$occArr['recordedby'].' '.$occArr['recordnumber'].'<span style="margin-left:40px;">'.$occArr['eventdate'].'</span></div>';
+						if($occArr['catalognumber']) echo '<div><label>'.$LANG['CATALOG_NUMBER'].':</label> '.$occArr['catalognumber'].'</div>';
+						if($occArr['occurrenceid']) echo '<div><label>'.$LANG['GUID'].':</label> '.$occArr['occurrenceid'].'</div>';
+						echo '<div><label>'.$LANG['LATEST_ID'].':</label> ';
+						if(!isset($occArr['taxonsecure'])) echo '<i>'.$occArr['sciname'].'</i> '.$occArr['scientificnameauthorship'];
+						else echo $LANG['SPECIES_PROTECTED'];
+						echo '</div>';
+						if($occArr['identifiedby']) echo '<div><label>'.$LANG['IDENTIFIED_BY'].':</label> '.$occArr['identifiedby'].'<span stlye="margin-left:30px;">'.$occArr['dateidentified'].'</span></div>';
+						echo '</div>';
+						//Grab other records
+						foreach($dupClusterArr as $dupeType => $dupeArr){
+							echo '<fieldset>';
+							echo '<legend>'.($dupeType == 'dupe' ? $LANG['DUPES'] : $LANG['EXSICCATAE']).'</legend>';
+							foreach($dupeArr as $dupOccid => $dupArr){
+								if($dupOccid != $occid){
+									echo '<div style="clear:both;margin:15px;">';
+									echo '<div style="float:left;margin:5px 15px">';
+									echo '<div class="title2-div">'.$dupArr['collname'].' ('.$dupArr['instcode'].($dupArr['collcode']?':'.$dupArr['collcode']:'').')</div>';
+									if($dupArr['recordedby']) echo '<div>'.$dupArr['recordedby'].' '.$dupArr['recordnumber'].'<span style="margin-left:40px;">'.$dupArr['eventdate'].'</span></div>';
+									if($dupArr['catalognumber']) echo '<div><label>'.$LANG['CATALOG_NUMBER'].':</label> '.$dupArr['catalognumber'].'</div>';
+									if($dupArr['occurrenceid']) echo '<div><label>'.$LANG['GUID'].':</label> '.$dupArr['occurrenceid'].'</div>';
+									echo '<div><label>'.$LANG['LATEST_ID'].':</label> ';
+									if(!isset($occArr['taxonsecure'])) echo '<i>'.$dupArr['sciname'].'</i> '.$dupArr['author'];
+									else echo $LANG['SPECIES_PROTECTED'];
+									echo '</div>';
+									if($dupArr['identifiedby']) echo '<div><label>'.$LANG['IDENTIFIED_BY'].':</label> '.$dupArr['identifiedby'].'<span stlye="margin-left:30px;">'.$dupArr['dateidentified'].'</span></div>';
+									echo '<div><a href="#" onclick="openIndividual('.$dupOccid.');return false;">'.$LANG['SHOW_FULL_DETAILS'].'</a></div>';
+									echo '</div>';
+									if(!isset($occArr['taxonsecure']) && !isset($occArr['localsecure'])){
+										if($dupArr['url']){
+											$url = $dupArr['url'];
+											if($IMAGE_DOMAIN) if(substr($url,0,1) == '/') $url = $IMAGE_DOMAIN.$url;
+											echo '<div style="float:right;margin:10px;"><img src="'.$url.'" style="width:70px;border:1px solid grey" /></div>';
+										}
+									}
+									echo '<div style="margin:10px 0px;clear:both"><hr/></div>';
+									echo '</div>';
+								}
 							}
+							echo '</fieldset>';
 						}
 						?>
 					</div>
@@ -1151,8 +1172,12 @@ $traitArr = $indManager->getTraitArr();
 				?>
 				<div id="commenttab">
 					<?php
+					$commentTabIndex = 1;
+					if($displayMap) $commentTabIndex++;
+					if($genticArr) $commentTabIndex++;
+					if($dupClusterArr) $commentTabIndex++;
 					if($commentArr){
-						echo '<div><b>'.count($commentArr).' '.(isset($LANG['COMMENTS'])?$LANG['COMMENTS']:'Comments').'</b></div>';
+						echo '<div><label>'.count($commentArr).' '.$LANG['COMMENTS'].'</label></div>';
 						echo '<hr style="color:gray;"/>';
 						foreach($commentArr as $comId => $comArr){
 							?>
@@ -1161,29 +1186,28 @@ $traitArr = $indManager->getTraitArr();
 								echo '<div>';
 								echo '<b>'.$comArr['username'].'</b> <span style="color:gray;">posted '.$comArr['initialtimestamp'].'</span>';
 								echo '</div>';
-								if($comArr['reviewstatus'] == 0 || $comArr['reviewstatus'] == 2)
-									echo '<div style="color:red;">'.(isset($LANG['COMMENTNOTPUBLIC'])?$LANG['COMMENTNOTPUBLIC']:'Comment not public due to pending abuse report (viewable to administrators only)').'</div>';
+								if($comArr['reviewstatus'] == 0 || $comArr['reviewstatus'] == 2) echo '<div style="color:red;">'.$LANG['COMMENT_NOT_PUBLIC'].'</div>';
 								echo '<div style="margin:10px;">'.$comArr['comment'].'</div>';
 								if($comArr['reviewstatus']){
 									if($SYMB_UID){
-										echo '<div><a href="index.php?repcomid='.$comId.'&occid='.$occid.'&tabindex='.($displayMap?2:1).'">';
-										echo (isset($LANG['REPORT'])?$LANG['REPORT']:'Report as inappropriate or abusive');
+									    echo '<div><a href="index.php?repcomid='.$comId.'&occid='.$occid.'&tabindex='.$commentTabIndex.'">';
+										echo $LANG['REPORT'];
 										echo '</a></div>';
 									}
 								}
 								else{
-									echo '<div><a href="index.php?publiccomid='.$comId.'&occid='.$occid.'&tabindex='.($displayMap?2:1).'">';
-									echo (isset($LANG['MAKECOMPUB'])?$LANG['MAKECOMPUB']:'Make comment public');
+								    echo '<div><a href="index.php?publiccomid='.$comId.'&occid='.$occid.'&tabindex='.$commentTabIndex.'">';
+									echo $LANG['MAKE_COMMENT_PUBLIC'];
 									echo '</a></div>';
 								}
 								if($isEditor || ($SYMB_UID && $comArr['username'] == $PARAMS_ARR['un'])){
 									?>
 									<div style="margin:20px;">
-										<form name="delcommentform" action="index.php" method="post" onsubmit="return confirm('<?php echo (isset($LANG['CONFIRMDELETE'])?$LANG['CONFIRMDELETE']:'Are you sure you want to delete comment'); ?>?')">
+										<form name="delcommentform" action="index.php" method="post" onsubmit="return confirm('<?php echo $LANG['CONFIRM_DELETE']; ?>?')">
 											<input name="occid" type="hidden" value="<?php echo $occid; ?>" />
 											<input name="comid" type="hidden" value="<?php echo $comId; ?>" />
-											<input name="tabindex" type="hidden" value="<?php echo ($displayMap?2:1); ?>" />
-											<button name="formsubmit" type="submit" value="deleteComment"><?php echo (isset($LANG['DELETECOMMENT'])?$LANG['DELETECOMMENT']:'Delete Comment'); ?></button>
+											<input name="tabindex" type="hidden" value="<?php echo $commentTabIndex; ?>" />
+											<button name="formsubmit" type="submit" value="deleteComment"><?php echo $LANG['DELETE_COMMENT']; ?></button>
 										</form>
 									</div>
 									<?php
@@ -1194,10 +1218,10 @@ $traitArr = $indManager->getTraitArr();
 							<?php
 						}
 					}
-					else echo '<div class="title" style="margin:20px;">'.(isset($LANG['NOCOMMENTS'])?$LANG['NOCOMMENTS']:'No comments have been submitted').'</div>';
+					else echo '<div class="title2-div" style="margin:20px;">'.$LANG['NO_COMMENTS'].'</div>';
 					?>
 					<fieldset>
-						<legend><?php echo (isset($LANG['NEWCOMMENT'])?$LANG['NEWCOMMENT']:'New Comment'); ?></legend>
+						<legend><?php echo $LANG['NEW_COMMENT']; ?></legend>
 						<?php
 						if($SYMB_UID){
 							?>
@@ -1205,11 +1229,11 @@ $traitArr = $indManager->getTraitArr();
 								<textarea name="commentstr" rows="8" style="width:98%;"></textarea>
 								<div style="margin:15px;">
 									<input name="occid" type="hidden" value="<?php echo $occid; ?>" />
-									<input name="tabindex" type="hidden" value="<?php echo ($displayMap?2:1); ?>" />
-									<button type="submit" name="formsubmit" value="submitComment"><?php echo (isset($LANG['SUBMITCOMMENT'])?$LANG['SUBMITCOMMENT']:'Submit Comment'); ?></button>
+									<input name="tabindex" type="hidden" value="<?php echo $commentTabIndex; ?>" />
+									<button type="submit" name="formsubmit" value="submitComment"><?php echo $LANG['SUBMIT_COMMENT']; ?></button>
 								</div>
 								<div>
-									<?php echo (isset($LANG['MESSAGEWARNING'])?$LANG['MESSAGEWARNING']:'Messages over 500 words long may be automatically truncated. All comments are moderated.'); ?>
+									<?php echo $LANG['MESSAGE_WARNING']; ?>
 								</div>
 							</form>
 							<?php
@@ -1217,15 +1241,31 @@ $traitArr = $indManager->getTraitArr();
 						else{
 							echo '<div style="margin:10px;">';
 							echo '<a href="../../profile/index.php?refurl=../collections/individual/index.php?tabindex=2&occid='.$occid.'">';
-							echo (isset($LANG['LOGIN'])?$LANG['LOGIN']:'Log In');
+							echo $LANG['LOGIN'];
 							echo '</a> ';
-							echo (isset($LANG['TOLEAVECOMMENT'])?$LANG['TOLEAVECOMMENT']:'to leave a comment.');
+							echo $LANG['TO_LEAVE_COMMENT'];
 							echo '</div>';
 						}
 						?>
 					</fieldset>
 				</div>
 				<?php
+				if($traitArr){
+				    ?>
+					<div id="traittab">
+						<?php
+						foreach($traitArr as $traitID => $tArr){
+							if(!$tArr['depStateID']){
+								echo '<div class="trait-div">';
+								$indManager->echoTraitUnit($traitArr[$traitID]);
+								$indManager->echoTraitDiv($traitArr,$traitID);
+								echo '</div>';
+							}
+						}
+						?>
+					</div>
+					<?php
+				}
 				if($isEditor){
 					?>
 					<div id="edittab">
@@ -1241,10 +1281,10 @@ $traitArr = $indManager->getTraitArr();
 							}
 							*/
 							echo '<div style="margin:20px 0px 30px 0px;">';
-							echo '<b>'.(isset($LANG['ENTEREDBY'])?$LANG['ENTEREDBY']:'Entered By').'</b> '.($occArr['recordenteredby']?$occArr['recordenteredby']:'not recorded').'<br/>';
-							echo '<b>'.(isset($LANG['DATEENTERED'])?$LANG['DATEENTERED']:'Date entered').':</b> '.($occArr['dateentered']?$occArr['dateentered']:'not recorded').'<br/>';
-							echo '<b>'.(isset($LANG['DATEMODIFIED'])?$LANG['DATEMODIFIED']:'Date modified').':</b> '.($occArr['datelastmodified']?$occArr['datelastmodified']:'not recorded').'<br/>';
-							if($occArr['modified'] && $occArr['modified'] != $occArr['datelastmodified']) echo '<b>'.(isset($LANG['SRCDATEMODIFIED'])?$LANG['SRCDATEMODIFIED']:'Source date modified').':</b> '.$occArr['modified'];
+							echo '<label>'.$LANG['ENTERED_BY'].':</label> '.($occArr['recordenteredby']?$occArr['recordenteredby']:'not recorded').'<br/>';
+							echo '<label>'.$LANG['DATE_ENTERED'].':</label> '.($occArr['dateentered']?$occArr['dateentered']:'not recorded').'<br/>';
+							echo '<label>'.$LANG['DATE_MODIFIED'].':</label> '.($occArr['datelastmodified']?$occArr['datelastmodified']:'not recorded').'<br/>';
+							if($occArr['modified'] && $occArr['modified'] != $occArr['datelastmodified']) echo '<label>'.$LANG['SOURCE_DATE_MODIFIED'].':</label> '.$occArr['modified'];
 							echo '</div>';
 							//Display edits
 							$editArr = $indManager->getEditArr();
@@ -1252,32 +1292,32 @@ $traitArr = $indManager->getTraitArr();
 							if($editArr || $externalEdits){
 								if($editArr){
 									?>
-									<fieldset>
-										<legend><?php echo (isset($LANG['INTERNALEDITS'])?$LANG['INTERNALEDITS']:'Internal Edits'); ?></legend>
+									<fieldset style="padding:15px;margin:10px 0px;">
+										<legend><?php echo $LANG['INTERNAL_EDITS']; ?></legend>
 										<?php
-										foreach($editArr as $k => $eArr){
-											$reviewStr = 'OPEN';
-											if($eArr['reviewstatus'] == 2) $reviewStr = 'PENDING';
-											elseif($eArr['reviewstatus'] == 3) $reviewStr = 'CLOSED';
+										foreach($editArr as $ts => $tsArr){
 											?>
 											<div>
-												<b><?php echo (isset($LANG['EDITOR'])?$LANG['EDITOR']:'Editor'); ?>:</b> <?php echo $eArr['editor']; ?>
-												<span style="margin-left:30px;"><b>Date:</b> <?php echo $eArr['ts']; ?></span>
-											</div>
-											<div>
-												<span><b><?php echo (isset($LANG['APPLIEDSTATUS'])?$LANG['APPLIEDSTATUS']:'Applied Status'); ?>:</b> <?php echo ($eArr['appliedstatus']?(isset($LANG['APPLIED'])?$LANG['APPLIED']:'applied'):(isset($LANG['NOTAPPLIED'])?$LANG['NOTAPPLIED']:'not applied')); ?></span>
-												<span style="margin-left:30px;"><b><?php echo (isset($LANG['REVIEWSTATUS'])?$LANG['REVIEWSTATUS']:'Review Status'); ?>:</b> <?php echo $reviewStr; ?></span>
+												<b><?php echo $LANG['EDITOR']; ?>:</b> <?php echo $tsArr['editor']; ?>
+												<span style="margin-left:30px;"><b><?php echo $LANG['DATE']; ?>:</b> <?php echo $ts; ?></span>
 											</div>
 											<?php
-											$edArr = $eArr['edits'];
-											foreach($edArr as $vArr){
-												echo '<div style="margin:15px;">';
-												echo '<b>'.(isset($LANG['FIELD'])?$LANG['FIELD']:'Field').':</b> '.$vArr['fieldname'].'<br/>';
-												echo '<b>'.(isset($LANG['OLDVALUE'])?$LANG['OLDVALUE']:'Old Value').':</b> '.$vArr['old'].'<br/>';
-												echo '<b>'.(isset($LANG['NEWVALUE'])?$LANG['NEWVALUE']:'New Value').':</b> '.$vArr['new'].'<br/>';
-												echo '</div>';
+											foreach($tsArr['edits'] as $appliedStatus => $appliedArr){
+												?>
+												<div>
+													<span><b><?php echo $LANG['APPLIED_STATUS']; ?>:</b> <?php echo ($appliedStatus?$LANG['APPLIED']:$LANG['NOT_APPLIED']); ?></span>
+												</div>
+												<?php
+												foreach($appliedArr as $vArr){
+													echo '<div style="margin:10px 15px;">';
+													echo '<b>'.$LANG['FIELD'].':</b> '.$vArr['fieldname'].'<br/>';
+													echo '<b>'.$LANG['OLD_VALUE'].($vArr['current'] == 2?' ('.$LANG['CURRENT'].')':'').':</b> '.$vArr['old'].'<br/>';
+													echo '<b>'.$LANG['NEW_VALUE'].($vArr['current'] == 1?' ('.$LANG['CURRENT'].')':'').':</b> '.$vArr['new'].'<br/>';
+													echo '</div>';
+												}
 											}
-											echo '<div style="margin:15px 0px;"><hr/></div>';
+											echo '<div style="margin:5px 0px;">&nbsp;</div>';
+											echo '<div style=""><hr></div>';
 										}
 										?>
 									</fieldset>
@@ -1286,7 +1326,7 @@ $traitArr = $indManager->getTraitArr();
 								if($externalEdits){
 									?>
 									<fieldset>
-										<legend><?php echo (isset($LANG['EXTERNALEDITS'])?$LANG['EXTERNALEDITS']:'External Edits').':'; ?></legend>
+										<legend><?php echo $LANG['EXTERNAL_EDITS'].':'; ?></legend>
 										<?php
 										foreach($externalEdits as $orid => $eArr){
 											foreach($eArr as $appliedStatus => $eArr2){
@@ -1295,21 +1335,21 @@ $traitArr = $indManager->getTraitArr();
 												elseif($eArr2['reviewstatus'] == 3) $reviewStr = 'CLOSED';
 												?>
 												<div>
-													<b><?php echo (isset($LANG['EDITOR'])?$LANG['EDITOR']:'Editor').':'; ?></b> <?php echo $eArr2['editor']; ?>
-													<span style="margin-left:30px;"><b><?php echo (isset($LANG['DATE'])?$LANG['DATE']:'Date'); ?>:</b> <?php echo $eArr2['ts']; ?></span>
-													<span style="margin-left:30px;"><b><?php echo (isset($LANG['SOURCE'])?$LANG['SOURCE']:'Source'); ?>:</b> <?php echo $eArr2['source']; ?></span>
+													<label><?php echo $LANG['EDITOR'].':'; ?></label> <?php echo $eArr2['editor']; ?>
+													<span style="margin-left:30px;"><label><?php echo (isset($LANG['DATE'])?$LANG['DATE']:'Date'); ?>:</label> <?php echo $eArr2['ts']; ?></span>
+													<span style="margin-left:30px;"><label><?php echo (isset($LANG['SOURCE'])?$LANG['SOURCE']:'Source'); ?>:</label> <?php echo $eArr2['source']; ?></span>
 												</div>
 												<div>
-													<span><b><?php echo (isset($LANG['APPLIEDSTATUS'])?$LANG['APPLIEDSTATUS']:'Applied Status'); ?>:</b> <?php echo ($appliedStatus?'applied':'not applied'); ?></span>
-													<span style="margin-left:30px;"><b><?php echo (isset($LANG['REVIEWSTATUS'])?$LANG['REVIEWSTATUS']:'Review Status'); ?>:</b> <?php echo $reviewStr; ?></span>
+													<span><label><?php echo (isset($LANG['APPLIEDSTATUS'])?$LANG['APPLIEDSTATUS']:'Applied Status'); ?>:</label> <?php echo ($appliedStatus?'applied':'not applied'); ?></span>
+													<span style="margin-left:30px;"><label><?php echo (isset($LANG['REVIEWSTATUS'])?$LANG['REVIEWSTATUS']:'Review Status'); ?>:</label> <?php echo $reviewStr; ?></span>
 												</div>
 												<?php
 												$edArr = $eArr2['edits'];
 												foreach($edArr as $fieldName => $vArr){
 													echo '<div style="margin:15px;">';
-													echo '<b>'.(isset($LANG['FIELD'])?$LANG['FIELD']:'Field').':</b> '.$fieldName.'<br/>';
-													echo '<b>'.(isset($LANG['OLDVALUE'])?$LANG['OLDVALUE']:'Old Value').':</b> '.$vArr['old'].'<br/>';
-													echo '<b>'.(isset($LANG['NEWVALUE'])?$LANG['NEWVALUE']:'New Value').':</b> '.$vArr['new'].'<br/>';
+													echo '<label>'.$LANG['FIELD'].':</label> '.$fieldName.'<br/>';
+													echo '<label>'.$LANG['OLD_VALUE'].':</label> '.$vArr['old'].'<br/>';
+													echo '<label>'.$LANG['NEW_VALUE'].':</label> '.$vArr['new'].'<br/>';
 													echo '</div>';
 												}
 												echo '<div style="margin:15px 0px;"><hr/></div>';
@@ -1321,15 +1361,15 @@ $traitArr = $indManager->getTraitArr();
 								}
 							}
 							else{
-								echo '<div style="margin:25px 0px;font-weight:bold">'.(isset($LANG['NOTEDITED'])?$LANG['NOTEDITED']:'Record has not been edited since being entered').'</div>';
+								echo '<div style="margin:25px 0px;font-weight:bold">'.$LANG['NOT_EDITED'].'</div>';
 							}
-							echo '<div style="margin:15px">'.(isset($LANG['EDITNOTE'])?$LANG['EDITNOTE']:'Note: Edits are only viewable by collection administrators and editors').'</div>';
+							echo '<div style="margin:15px">'.$LANG['EDIT_NOTE'].'</div>';
 							//Display Access Stats
 							$accessStats = $indManager->getAccessStats();
 							if($accessStats){
 								echo '<div style="margin-top:30px"><b>Access Stats</b></div>';
 								echo '<table class="styledtable" style="font-size:100%;width:300px;">';
-								echo '<tr><th>'.(isset($LANG['YEAR'])?$LANG['YEAR']:'Year').'</th><th>'.(isset($LANG['ACCESSTYPE'])?$LANG['ACCESSTYPE']:'Access Type').'</th><th>'.(isset($LANG['COUNT'])?$LANG['COUNT']:'Count').'</th></tr>';
+								echo '<tr><th>'.$LANG['YEAR'].'</th><th>'.$LANG['ACCESS_TYPE'].'</th><th>'.$LANG['COUNT'].'</th></tr>';
 								foreach($accessStats as $accessDate => $arr1){
 									foreach($arr1 as $accessType => $accessCnt){
 										echo '<tr><td>'.$accessDate.'</td><td>'.$accessType.'</td><td>'.$accessCnt.'</td></tr>';
@@ -1356,49 +1396,50 @@ $traitArr = $indManager->getTraitArr();
 					ob_flush();
 					flush();
 					$rawArchArr = $indManager->checkArchive();
-					//print_r($rawArchArr);
 					if($rawArchArr && $rawArchArr['obj']){
 						$archArr = $rawArchArr['obj'];
-						if(isset($archArr['dateDeleted'])) echo '<div><b>'.(isset($LANG['RECORDDELETED'])?$LANG['RECORDDELETED']:'Record deleted').':</b> '.$archArr['dateDeleted'].'</div>';
-						if($rawArchArr['notes']) echo '<div style="margin-left:15px"><b>'.(isset($LANG['NOTES'])?$LANG['NOTES']:'Notes').': </b>'.$rawArchArr['notes'].'</div>';
-						$dets = array();
-						$imgs = array();
-						if(isset($archArr['dets'])){
-							$dets = $archArr['dets'];
-							unset($archArr['dets']);
+						if($isEditor){
+							?>
+							<div style="float:right">
+								<form name="restoreForm" action="index.php" method="post">
+									<input name="occid" type="hidden" value="<?php echo $occid; ?>" />
+									<input name="collid" type="hidden" value="<?php echo $collid; ?>" />
+									<button name="formsubmit" type="submit" value="restoreRecord"><?php echo $LANG['RESTORE_RECORD']; ?></button>
+								</form>
+							</div>
+							<?php
 						}
-						if(isset($archArr['imgs'])){
-							$imgs = $archArr['imgs'];
-							unset($archArr['imgs']);
-						}
-						echo '<table class="styledtable" style="font-family:Arial;font-size:12px;"><tr><th>'.(isset($LANG['FIELD'])?$LANG['FIELD']:'Field').'</th><th>'.(isset($LANG['VALUE'])?$LANG['VALUE']:'Value').'</th></tr>';
+						if(isset($archArr['dateDeleted'])) echo '<div style="margin-bottom:10px"><label>'.$LANG['RECORD_DELETED'].':</label> '.$archArr['dateDeleted'].'</div>';
+						if($rawArchArr['notes']) echo '<div style="margin-left:15px"><label>'.$LANG['NOTES'].': </label>'.$rawArchArr['notes'].'</div>';
+						echo '<table class="styledtable"><tr><th>'.$LANG['FIELD'].'</th><th>'.$LANG['VALUE'].'</th></tr>';
 						foreach($archArr as $f => $v){
-							echo '<tr><td style="width:175px;"><b>'.$f.'</b></td><td>';
-							if(is_array($v)) echo implode(', ',$v);
-							else echo $v;
-							echo '</td></tr>';
-						}
-						if($dets){
-							foreach($dets as $id => $dArr){
-								echo '<tr><td><b>'.(isset($LANG['DETERMINATIONNO'])?$LANG['DETERMINATIONNO']:'Determination #').$id.'</b></td><td>';
-								foreach($dArr as $f => $v){
-									echo '<b>'.$f.'</b>: '.$v.'<br/>';
-								}
+							if(!is_array($v)){
+								echo '<tr><td style="width:175px;">'.$f.'</td><td>';
+								if(is_array($v)) echo implode(', ',$v);
+								else echo $v;
 								echo '</td></tr>';
 							}
 						}
-						if($imgs){
-							foreach($imgs as $id => $iArr){
-								echo '<tr><td><b>'.(isset($LANG['IMAGENO'])?$LANG['IMAGENO']:'Image #').$id.'</b></td><td>';
-								foreach($iArr as $f => $v){
-									echo '<b>'.$f.'</b>: '.$v.'<br/>';
+						$extArr = array('dets'=>'identifications','imgs'=>'Images','assoc'=>'Occurrence<br/>Associations','exsiccati'=>'Exsiccati','paleo'=>'Paleontological<br/>Terms','matSample'=>'Material<br/>Sample');
+						foreach($extArr as $extName => $extDisplay){
+							if(isset($archArr[$extName]) && $archArr[$extName]){
+								echo '<tr><td>'.$extDisplay.'</td><td>';
+								foreach($archArr[$extName] as $extKey => $extValue){
+									if(is_array($extValue)){
+										echo '<label>'.$LANG['RECORD_ID'].': '.$extKey.'</label><br/>';
+										foreach($extValue as $f => $v){
+											echo $f.': '.$v.'<br/>';
+										}
+										echo '<br/>';
+									}
+									else echo $extKey.': '.$extValue.'<br/>';
 								}
 								echo '</td></tr>';
 							}
 						}
 						echo '</table>';
 					}
-					else echo (isset($LANG['UNABLETOLOCATE'])?$LANG['UNABLETOLOCATE']:'Unable to locate record');
+					else echo $LANG['UNABLE_TO_LOCATE'];
 					?>
 				</div>
 			</div>

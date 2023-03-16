@@ -40,15 +40,7 @@ if($IS_ADMIN){
 <head>
 	<title><?php echo $DEFAULT_TITLE.' '.(isset($LANG['USER_MNGMT'])?$LANG['USER_MNGMT']:'User Management'); ?></title>
 	<?php
-	$activateJQuery = false;
-	if(file_exists($SERVER_ROOT.'/includes/head.php')){
-		include_once($SERVER_ROOT.'/includes/head.php');
-	}
-	else{
-		echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-		echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-		echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-	}
+	include_once($SERVER_ROOT.'/includes/head.php');
 	?>
 	<style type="text/css">
 		th{ font-size: 90% }
@@ -240,6 +232,20 @@ if($IS_ADMIN){
 								</li>
 								<?php
 							}
+							if(array_key_exists("ClCreate",$userPermissions)){
+								?>
+								<li>
+									<b><?php
+									echo '<span title="'.$userPermissions['ClCreate']['aby'].'">';
+									echo str_replace('ClCreate',(isset($LANG['CL_CREATE'])?$LANG['CL_CREATE']:'Create a Checklist'),$userPermissions['ClCreate']['role']);
+									echo '</span>';
+									?></b>
+									<a href="usermanagement.php?delrole=clCreate&userid=<?php echo $userId; ?>">
+										<img src="../images/del.png" style="border:0px;width:15px;" title=<?php echo (isset($LANG['DEL_PERM'])?$LANG['DEL_PERM']:'Delete permission'); ?> />
+									</a>
+								</li>
+								<?php
+							}
 							if(array_key_exists("RareSppAdmin",$userPermissions)){
 								?>
 								<li>
@@ -419,11 +425,14 @@ if($IS_ADMIN){
 					?>
 				</fieldset>
 				<form name="addpermissions" action="usermanagement.php" method="post">
+					<?php
+					$addPermButton = '<button type="submit" name="apsubmit" value="Add Permission">'.(isset($LANG['ADD_PERMISSION'])?$LANG['ADD_PERMISSION']:'Add Permission').'</button>';
+					?>
 					<fieldset style="margin:10px;-color:#FFFFCC;padding:15px;">
 						<legend style="font-weight:bold;font-size:120%;"><?php echo (isset($LANG['ASSIGN_NEW'])?$LANG['ASSIGN_NEW']:'Assign New Permissions'); ?></legend>
 						<div style="margin:5px;">
 							<div style="float:right;margin:10px">
-								<button type="submit" name="apsubmit" value="Add Permission"><?php echo (isset($LANG['ADD_PERMISSION'])?$LANG['ADD_PERMISSION']:'Add Permission'); ?></button>
+								<?php echo $addPermButton; ?>
 								<input type="hidden" name="userid" value="<?php echo $userId;?>" />
 							</div>
 							<?php
@@ -444,6 +453,9 @@ if($IS_ADMIN){
 							}
 							if(!array_key_exists("KeyEditor",$userPermissions)){
 								echo "<div><input type='checkbox' name='p[]' value='KeyEditor' /> ".(isset($LANG['ID_KEY_EDITOR'])?$LANG['ID_KEY_EDITOR']:'Identification Keys Editor')."</div>";
+							}
+							if(!array_key_exists("ClCreate",$userPermissions)){
+								echo "<div><input type='checkbox' name='p[]' value='ClCreate' /> ".(isset($LANG['CL_CREATE'])?$LANG['CL_CREATE']:'Create a Checklist')."</div>";
 							}
 							?>
 						</div>
@@ -491,7 +503,7 @@ if($IS_ADMIN){
 						if($collArr){
 							?>
 							<div style="float:right;margin:10px;">
-								<input type='submit' name='apsubmit' value='Add Permission' />
+								<?php echo $addPermButton; ?>
 							</div>
 							<h2 style="text-decoration:underline"><?php echo (isset($LANG['SPEC_COLS'])?$LANG['SPEC_COLS']:'Specimen Collections'); ?></h2>
 							<table>
@@ -539,7 +551,7 @@ if($IS_ADMIN){
 						if($obsArr){
 							?>
 							<div style="float:right;margin:10px;">
-								<input type='submit' name='apsubmit' value='Add Permission' />
+								<?php echo $addPermButton; ?>
 							</div>
 							<h2 style="text-decoration:underline"><?php echo (isset($LANG['OBS_PROJECTS'])?$LANG['OBS_PROJECTS']:'Observation Projects'); ?></h2>
 							<table>
@@ -587,7 +599,7 @@ if($IS_ADMIN){
 						if($personalObsArr){
 							?>
 							<div style="float:right;margin:10px;">
-								<button type="submit" name="apsubmit" value="Add Permission"><?php echo (isset($LANG['ADD_PERMISSION'])?$LANG['ADD_PERMISSION']:'Add Permission'); ?></button>
+								<?php echo $addPermButton; ?>
 							</div>
 							<h2 style="text-decoration:underline"><?php echo (isset($LANG['PERS_SP_MGMNT'])?$LANG['PERS_SP_MGMNT']:'Personal Specimen Management'); ?></h2>
 							<table style="margin-bottom:20px">
@@ -631,7 +643,7 @@ if($IS_ADMIN){
 							?>
 							<div><hr/></div>
 							<div style="float:right;margin:10px;">
-								<button type='submit' name='apsubmit'><?php echo (isset($LANG['ADD_PERMISSION'])?$LANG['ADD_PERMISSION']:'Add Permission'); ?></button>
+								<?php echo $addPermButton; ?>
 							</div>
 							<h2 style="text-decoration:underline"><?php echo (isset($LANG['INV_MGMNT'])?$LANG['INV_MGMNT']:'Inventory Project Management'); ?></h2>
 							<?php
@@ -656,7 +668,7 @@ if($IS_ADMIN){
 							?>
 							<div><hr/></div>
 							<div style="float:right;margin:10px;">
-								<button type="submit" name="apsubmit" value="Add Permission"><?php echo (isset($LANG['ADD_PERMISSION'])?$LANG['ADD_PERMISSION']:'Add Permission'); ?></button>
+								<?php echo $addPermButton; ?>
 							</div>
 							<h2 style="text-decoration:underline"><?php echo (isset($LANG['CHECKLIST_MGMNT'])?$LANG['CHECKLIST_MGMNT']:'Checklist Management'); ?></h2>
 							<?php

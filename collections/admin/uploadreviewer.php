@@ -1,6 +1,7 @@
 <?php
 include_once('../../config/symbini.php');
 include_once($SERVER_ROOT.'/classes/SpecUpload.php');
+include_once($SERVER_ROOT.'/content/lang/collections/admin/uploadreviewer.'.$LANG_TAG.'.php');
 header("Content-Type: text/html; charset=".$CHARSET);
 
 $collid = array_key_exists('collid',$_REQUEST)?$_REQUEST['collid']:0;
@@ -56,23 +57,15 @@ if($SYMB_UID){
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $CHARSET; ?>">
-	<title>Record Upload Preview</title>
+	<title><?php echo (isset($LANG['UP_PREVIEW'])?$LANG['UP_PREVIEW']:'Record Upload Preview'); ?></title>
     <style type="text/css">
 		table.styledtable td {
 		    white-space: nowrap;
 		}
-    </style>
-    <?php
-      $activateJQuery = false;
-      if(file_exists($SERVER_ROOT.'/includes/head.php')){
-        include_once($SERVER_ROOT.'/includes/head.php');
-      }
-      else{
-        echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-      }
-    ?>
+	</style>
+	<?php
+	include_once($SERVER_ROOT.'/includes/head.php');
+	?>
 </head>
 <body style="margin-left: 0px; margin-right: 0px;background-color:white;">
 	<!-- inner text -->
@@ -149,13 +142,13 @@ if($SYMB_UID){
 			else{
 				?>
 				<div style="font-weight:bold;font-size:120%;margin:25px;">
-					No records have been uploaded
+					<?php echo (isset($LANG['NO_RECS'])?$LANG['NO_RECS']:'No records have been uploaded'); ?>
 				</div>
 				<?php
 			}
 		}
 		else{
-			echo '<h2>You are not authorized to access this page</h2>';
+			echo '<h2>'.(isset($LANG['NOT_AUTH'])?$LANG['NOT_AUTH']:'You are not authorized to access this page').'</h2>';
 		}
 		?>
 	</div>

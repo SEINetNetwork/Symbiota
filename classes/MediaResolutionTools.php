@@ -18,9 +18,13 @@ class MediaResolutionTools extends Manager {
 	private $matchTermThumbnail;
 	private $matchTermWeb;
 	private $matchTermLarge;
+	private $deleteSource = false;
 	private $imgRootUrl;
 	private $imgRootPath;
 	private $imgSubPath;
+	private $sourcePathPrefix;
+
+	private $debugMode = false;
 
 	function __construct() {
 		parent::__construct(null,'write');
@@ -160,10 +164,14 @@ class MediaResolutionTools extends Manager {
 	}
 
 	//Image migration functions
-	public function migrateDerivatives($limit){
+	public function migrateFieldDerivatives($imgIdStart, $limit){
+		//Needs to be reworked
+		ini_set('max_execution_time', 3600);
+		$this->debugMode = true;
+		$imgId = 0;
 		if(is_numeric($limit) && is_numeric($this->collid) && $this->imgRootUrl && $this->imgRootPath){
 			if($this->transferThumbnail && $this->transferWeb && $this->transferLarge){
-				if($this->matchTermTn || $this->matchTermWeb || $this->matchTermLarge){
+				if($this->matchTermThumbnail || $this->matchTermWeb || $this->matchTermLarge){
 					echo '<ul>';
 					$this->setTargetPaths();
 					$dirCnt = 0;
@@ -183,35 +191,51 @@ class MediaResolutionTools extends Manager {
 						if($this->matchTermThumbnail) $sql .= ' AND thumbnailurl LIKE "'.$this->matchTermThumbnail.'%" ';
 						if($this->matchTermWeb) $sql .= ' AND url LIKE "'.$this->matchTermWeb.'%" ';
 						if($this->matchTermLarge) $sql .= ' AND originalurl LIKE "'.$this->matchTermLarge.'%" ';
+						if($imgIdStart && is_numeric($imgIdStart)) $sql .= 'AND imgid > '.$imgIdStart.' ';
+						$sql .= 'ORDER BY imgid ';
 						$sql .= 'LIMIT 1000';
+						echo $sql.'<br/>';
 						$rs = $this->conn->query($sql);
 						while($r = $rs->fetch_object()){
+							$imgId = $r->imgid;
 							if($this->transferThumbnail){
-								$filePath = $pathFrag.strrpos($r->thumbnailurl+1, '/');
+								$filePath = $pathFrag;
+								if(substr($r->thumbnailurl,-1) != '/') $filePath .= '/';
+								echo $r->thumbnailurl.' => '.$this->imgRootPath.$filePath.'<br/>';
+/*
 								if(copy($r->thumbnailurl,$this->imgRootPath.$filePath)){
 									$imgArr[$r->imgid]['tn'] = $filePath;
 									$this->logOrEcho('Copied: '.$r->thumbnailurl);
 								}
+*/
 							}
 							if($this->transferWeb){
-								$filePath = $pathFrag.strrpos($r->url+1, '/');
-								if(copy($r->url,$this->imgRootPath.$filePath)){
+								$filePath = $pathFrag;
+								if(substr($r->url,-1) != '/') $filePath .= '/';
+								echo $r->url.' => '.$this->imgRootPath.$filePath.'<br/>';
+								/*
+								 if(copy($r->url,$this->imgRootPath.$filePath)){
 									$imgArr[$r->imgid]['web'] = $filePath;
 									$this->logOrEcho('Copied: '.$r->url);
 								}
+*/
 							}
 							if($this->transferLarge){
-								$filePath = $pathFrag.strrpos($r->originalurl+1, '/');
+								$filePath = $pathFrag;
+								if(substr($r->originalurl,-1) != '/') $filePath .= '/';
+								echo $r->originalurl.' => '.$this->imgRootPath.$filePath.'<br/>';
+/*
 								if(copy($r->originalurl,$this->imgRootPath.$filePath)){
 									$imgArr[$r->imgid]['lg'] = $filePath;
 									$this->logOrEcho('Copied: '.$r->originalurl);
 								}
+*/
 							}
 							$limit--;
 							if($limit < 1) break;
 						}
 						$rs->free();
-						$this->processImageArr($imgArr);
+						$this->databaseImageArr($imgArr);
 						$cnt = count($imgArr);
 						$this->logOrEcho($cnt.' image records remapped');
 						unset($imgArr);
@@ -220,18 +244,152 @@ class MediaResolutionTools extends Manager {
 				}
 			}
 		}
+		return $imgId;
 	}
 
-	private function processImageArr($imgArr){
+	public function migrateCollectionDerivatives($imgIdStart, $limit){
+		//Migrates images based on catalog number; NULL or weak catalogNumbers are skipped
+		ini_set('max_execution_time', 3600);
+		if($this->collid && is_numeric($limit) && $this->imgRootUrl && $this->imgRootPath){
+			if($this->transferThumbnail || $this->transferWeb || $this->transferLarge){
+				if($this->matchTermThumbnail || $this->matchTermWeb || $this->matchTermLarge){
+					echo '<ul>';
+					$this->setTargetPaths();
+					$processingCnt = 0;
+					$sqlBase = 'FROM images i INNER JOIN omoccurrences o ON i.occid = o.occid WHERE o.collid = '.$this->collid.' ';
+					if($this->matchTermThumbnail) $sqlBase .= 'AND thumbnailurl LIKE "'.$this->matchTermThumbnail.'%" ';
+					if($this->matchTermWeb) $sqlBase .= 'AND url LIKE "'.$this->matchTermWeb.'%" ';
+					if($this->matchTermLarge) $sqlBase .= 'AND originalurl LIKE "'.$this->matchTermLarge.'%" ';
+					$targetCount = 0;
+					$sqlCount = 'SELECT COUNT(i.imgid) as cnt '.$sqlBase.' ';
+					if($imgIdStart && is_numeric($imgIdStart)) $sqlCount .= 'AND imgid > '.$imgIdStart.' ';
+					$rsCount = $this->conn->query($sqlCount);
+					while($rCount = $rsCount->fetch_object()){
+						$targetCount = $rCount->cnt;
+					}
+					$rsCount->free();
+					$this->logOrEcho('Starting remapping of '.$limit.' out of '.$targetCount.' possible target images');
+					do{
+						$imgArr = array();
+						$sql = 'SELECT i.imgid, i.thumbnailurl, i.url, i.originalurl, o.catalognumber, o.occid '.$sqlBase;
+						if($imgIdStart && is_numeric($imgIdStart)) $sql .= 'AND imgid > '.$imgIdStart.' ';
+						$sql .= 'ORDER BY imgid LIMIT 100';
+						//$this->logOrEcho('sql used: '. $sql);
+						$rs = $this->conn->query($sql);
+						while($r = $rs->fetch_object()){
+							$imgIdStart = $r->imgid;
+							$pathFrag = '';
+							if(preg_match('/^(\D*).*(\d{4,})/', $r->catalognumber, $m)){
+								$catNum = $m[2];
+								if($catNum){
+									if(strlen($catNum)<8) $catNum = str_pad($catNum,8,'0',STR_PAD_LEFT);
+									$pathFrag = $m[1].substr($catNum,0,strlen($catNum)-4).'/';
+								}
+							}
+							if(!$pathFrag) $pathFrag = date('Ymd').'/';
+							if(!file_exists($this->imgRootPath.$pathFrag)) mkdir($this->imgRootPath.$pathFrag);
+							$this->logOrEcho($processingCnt.': Processing: <a href="../../individual/index.php?occid='.$r->occid.'" target="_blank">'.$r->occid.'</a>');
+							if($this->transferThumbnail && $r->thumbnailurl){
+								$fileName = basename($r->thumbnailurl);
+								$targetPath = $this->imgRootPath.$pathFrag.$fileName;
+								$targetUrl = $this->imgRootUrl.$pathFrag.$fileName;
+								$thumbPath = $this->getLocalPath($r->thumbnailurl);
+								if(copy($thumbPath, $targetPath)){
+									$imgArr[$r->imgid]['tn'] = $targetUrl;
+									$this->logOrEcho('Copied: '.$thumbPath.' => '.$targetPath,1);
+									if($this->deleteSource){
+										if(unlink($thumbPath)){
+											$this->logOrEcho('Source deleted: '.$thumbPath,1);
+										}
+										else{
+											$this->logOrEcho('ERROR deleting source (file permissions?): '.$thumbPath,1);
+										}
+									}
+								}
+							}
+							if($this->transferWeb && $r->url){
+								$fileName = basename($r->url);
+								$targetPath = $this->imgRootPath.$pathFrag.$fileName;
+								$targetUrl = $this->imgRootUrl.$pathFrag.$fileName;
+								$urlPath = $this->getLocalPath($r->url);
+								if(copy($urlPath, $targetPath)){
+									$imgArr[$r->imgid]['web'] = $targetUrl;
+									$this->logOrEcho('Copied: '.$urlPath.' => '.$targetPath,1);
+									if($this->deleteSource){
+										if(unlink($urlPath)){
+											$this->logOrEcho('Source delete: '.$urlPath,1);
+										}
+										else{
+											$this->logOrEcho('ERROR deleting source (file permissions?): '.$urlPath,1);
+										}
+									}
+								}
+							}
+							if($this->transferLarge && $r->originalurl){
+								$fileName = basename($r->originalurl);
+								$targetPath = $this->imgRootPath.$pathFrag.$fileName;
+								$targetUrl = $this->imgRootUrl.$pathFrag.$fileName;
+								$origPath = $this->getLocalPath($r->originalurl);
+								if(copy($origPath, $targetPath)){
+									$imgArr[$r->imgid]['lg'] = $targetUrl;
+									$this->logOrEcho('Copied: '.$origPath.' => '.$targetPath,1);
+									if($this->deleteSource){
+										if(unlink($origPath)){
+											$this->logOrEcho('Source deleted: '.$origPath,1);
+										}
+										else{
+											$this->logOrEcho('ERROR deleting source (file permissions?): '.$origPath,1);
+										}
+									}
+								}
+							}
+							$processingCnt++;
+							$limit--;
+							if($limit < 1) break;
+						}
+						$rs->free();
+						$this->databaseImageArr($imgArr);
+						$cnt = count($imgArr);
+						$this->logOrEcho($processingCnt.' image records remapped ('.date('Y-m-d H:i:s').')');
+						unset($imgArr);
+					}while($cnt && $limit);
+					echo '</ul>';
+				}
+			}
+		}
+		return $imgIdStart;
+	}
+
+	private function getLocalPath($imageUrl){
+		if($this->sourcePathPrefix){
+			$adjustedUrl = str_replace($this->sourcePathPrefix, $GLOBALS['IMAGE_ROOT_PATH'], $imageUrl);
+			if(file_exists($adjustedUrl)) return $adjustedUrl;
+		}
+		if(file_exists($imageUrl)){
+			return $imageUrl;
+		}
+		if(strpos($imageUrl, $GLOBALS['IMAGE_ROOT_URL']) !== false){
+			$adjustedUrl = str_replace($GLOBALS['IMAGE_ROOT_URL'], $GLOBALS['IMAGE_ROOT_PATH'], $imageUrl);
+			if(file_exists($adjustedUrl)) return $adjustedUrl;
+		}
+		$prefix = substr($GLOBALS['IMAGE_ROOT_PATH'], 0, strlen($GLOBALS['IMAGE_ROOT_PATH']) - strlen($GLOBALS['IMAGE_ROOT_URL']));
+		if(file_exists($prefix.$imageUrl)){
+			$this->sourcePathPrefix = $prefix;
+			return $prefix.$imageUrl;
+		}
+		return $imageUrl;
+	}
+
+	private function databaseImageArr($imgArr){
 		foreach($imgArr as $imgID => $iArr){
 			$sqlFrag = '';
-			if(isset($iArr['tn'])) $sqlFrag .= 'thumbnailurl = "'.$this->imgRootUrl.$iArr['tn'].'"';
-			if(isset($iArr['web'])) $sqlFrag .= ',url = "'.$this->imgRootUrl.$iArr['web'].'"';
-			if(isset($iArr['lg'])) $sqlFrag .= ',originalurl = "'.$this->imgRootUrl.$iArr['lg'].'"';
+			if(isset($iArr['tn'])) $sqlFrag .= 'thumbnailurl = "'.$iArr['tn'].'"';
+			if(isset($iArr['web'])) $sqlFrag .= ',url = "'.$iArr['web'].'"';
+			if(isset($iArr['lg'])) $sqlFrag .= ',originalurl = "'.$iArr['lg'].'"';
 			if($sqlFrag){
-				$sql = 'UPDATE images '.trim($sqlFrag,' ,').' WHERE imgid = '.$imgID;
+				$sql = 'UPDATE images SET '.trim($sqlFrag,' ,').' WHERE imgid = '.$imgID;
+				if($this->debugMode) $this->logOrEcho($sql);
 				if(!$this->conn->query($sql)) $this->logOrEcho('ERROR saving new paths: '.$this->conn->error,1);
-
 			}
 		}
 	}
@@ -240,9 +398,11 @@ class MediaResolutionTools extends Manager {
 		if($this->imgRootPath && $this->imgRootUrl){
 			if($this->collid){
 				$this->imgRootPath .= $this->collMetaArr['code'].'/';
+				$this->imgRootUrl .= $this->collMetaArr['code'].'/';
 			}
 			elseif($this->collid === 0){
 				$this->imgRootPath .= 'fieldimg/';
+				$this->imgRootUrl .= 'fieldimg/';
 			}
 			if(!file_exists($this->imgRootPath)) mkdir($this->imgRootPath);
 		}
@@ -388,6 +548,10 @@ class MediaResolutionTools extends Manager {
 
 	public function setMatchTermLarge($str){
 		$this->matchTermLarge = $str;
+	}
+
+	public function setDeleteSource($bool){
+		$this->deleteSource = $bool;
 	}
 
 	public function setImgRootUrl($url){

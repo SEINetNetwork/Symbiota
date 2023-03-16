@@ -4,10 +4,15 @@ include_once($SERVER_ROOT.'/classes/ChecklistVoucherManager.php');
 @include_once($SERVER_ROOT.'/content/lang/checklists/clsppeditor.'.$LANG_TAG.'.php');
 header("Content-Type: text/html; charset=".$CHARSET);
 
-$clid = array_key_exists("clid",$_REQUEST)?$_REQUEST["clid"]:"";
-$tid = array_key_exists("tid",$_REQUEST)?$_REQUEST["tid"]:"";
-$tabIndex = array_key_exists("tabindex",$_POST)?$_POST["tabindex"]:0;
-$action = array_key_exists("action",$_POST)?$_POST["action"]:"";
+$clid = array_key_exists('clid',$_REQUEST)?$_REQUEST['clid']:0;
+$tid = array_key_exists('tid',$_REQUEST)?$_REQUEST['tid']:0;
+$tabIndex = array_key_exists('tabindex',$_POST)?$_POST['tabindex']:0;
+$action = array_key_exists('action',$_POST)?$_POST['action']:'';
+
+//Sanitation
+if(!is_numeric($clid)) $clid = 0;
+if(!is_numeric($tid)) $tid = 0;
+if(!is_numeric($tabIndex)) $tabIndex = 0;
 
 $isEditor = false;
 if($IS_ADMIN || (array_key_exists("ClAdmin",$USER_RIGHTS) && in_array($clid,$USER_RIGHTS["ClAdmin"]))){
@@ -59,16 +64,9 @@ $clArray = $vManager->getChecklistData();
 <html>
 	<head>
 		<title><?php echo (isset($LANG['SPEC_DETAILS'])?$LANG['SPEC_DETAILS']:'Species Details'); ?>: <?php echo $vManager->getTaxonName()." of ".$vManager->getClName(); ?></title>
+		<link href="<?php echo $CSS_BASE_PATH; ?>/jquery-ui.css" type="text/css" rel="stylesheet">
 		<?php
-		$activateJQuery = true;
-		if(file_exists($SERVER_ROOT.'/includes/head.php')){
-			include_once($SERVER_ROOT.'/includes/head.php');
-		}
-		else{
-			echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-			echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-			echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-		}
+		include_once($SERVER_ROOT.'/includes/head.php');
 		?>
 		<script type="text/javascript" src="../js/jquery.js"></script>
 		<script type="text/javascript" src="../js/jquery-ui.js"></script>
@@ -100,12 +98,12 @@ $clArray = $vManager->getChecklistData();
 					alert("<?php echo (isset($LANG['NAME_BLANK'])?$LANG['NAME_BLANK']:'Scientific name field is blank'); ?>");
 				}
 				else{
-					checkScinameExistance(f);
+					checkScinameExistence(f);
 				}
 				return false;
 			}
 
-			function checkScinameExistance(f){
+			function checkScinameExistence(f){
 				$.ajax({
 					type: "POST",
 					url: "rpc/gettid.php",
@@ -164,8 +162,8 @@ $clArray = $vManager->getChecklistData();
 					<div id="gendiv">
 						<form name='editcl' action="clsppeditor.php" method='post' >
 							<fieldset style='margin:5px;padding:15px'>
-				    			<legend><b><?php echo (isset($LANG['EDIT_CHECKLIST'])?$LANG['EDIT_CHECKLIST']:'Edit Checklist Information'); ?></b></legend>
-				    			<div style="clear:both;margin:3px;">
+				   			<legend><b><?php echo (isset($LANG['EDIT_CHECKLIST'])?$LANG['EDIT_CHECKLIST']:'Edit Checklist Information'); ?></b></legend>
+				   			<div style="clear:both;margin:3px;">
 									<div style='width:100px;font-weight:bold;float:left;'>
 										<?php echo (isset($LANG['HABITAT'])?$LANG['HABITAT']:'Habitat'); ?>:
 									</div>
@@ -251,7 +249,7 @@ $clArray = $vManager->getChecklistData();
 						<hr />
 						<form action="clsppeditor.php" method="post" name="deletetaxon" onsubmit="return window.confirm('<?php echo (isset($LANG['ARE_YOU_SURE'])?$LANG['ARE_YOU_SURE']:'Are you sure you want to delete this taxon from checklist?'); ?>');">
 							<fieldset style='margin:5px;padding:15px;'>
-						    	<legend><b><?php echo (isset($LANG['DELETE'])?$LANG['DELETE']:'Delete'); ?></b></legend>
+						   	<legend><b><?php echo (isset($LANG['DELETE'])?$LANG['DELETE']:'Delete'); ?></b></legend>
 								<input type='hidden' name='tid' value="<?php echo $vManager->getTid(); ?>" />
 								<input type='hidden' name='clid' value="<?php echo $vManager->getClid(); ?>" />
 								<input type='hidden' name='cltype' value="<?php echo $clArray['cltype']; ?>" />
@@ -333,7 +331,7 @@ $clArray = $vManager->getChecklistData();
 
 					</div>
 					-->
- 				</div>
+				</div>
 				<?php
 			}
 			else{

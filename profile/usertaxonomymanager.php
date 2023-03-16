@@ -39,16 +39,9 @@ $editorArr = $utManager->getTaxonomyEditors();
 <html>
 <head>
 	<title><?php echo (isset($LANG['TAX_PERMISSIONS'])?$LANG['TAX_PERMISSIONS']:'Taxonomic Interest User permissions'); ?></title>
+	<link href="<?php echo $CSS_BASE_PATH; ?>/jquery-ui.css" type="text/css" rel="stylesheet">
 	<?php
-	$activateJQuery = true;
-	if(file_exists($SERVER_ROOT.'/includes/head.php')){
-		include_once($SERVER_ROOT.'/includes/head.php');
-	}
-	else{
-		echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-		echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-		echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-	}
+	include_once($SERVER_ROOT.'/includes/head.php');
 	?>
 	<script type="text/javascript" src="../js/jquery.js"></script>
 	<script type="text/javascript" src="../js/jquery-ui.js"></script>
@@ -63,15 +56,15 @@ $editorArr = $utManager->getTaxonomyEditors();
 
 		function verifyUserAddForm(f){
 			if(f.uid.value == ""){
-				alert(<?php echo (isset($LANG['SELECT_USER'])?$LANG['SELECT_USER']:'Select a User'); ?>);
+				alert("<?php echo (isset($LANG['SELECT_USER'])?$LANG['SELECT_USER']:'Select a User'); ?>");
 				return false;
 			}
 			if(f.editorstatus.value == ""){
-				alert(<?php echo (isset($LANG['SELECT_SCOPE'])?$LANG['SELECT_SCOPE']:'Select the Scope of Relationship'); ?>);
+				alert("<?php echo (isset($LANG['SELECT_SCOPE'])?$LANG['SELECT_SCOPE']:'Select the Scope of Relationship'); ?>");
 				return false;
 			}
 			if(f.taxoninput.value == ""){
-				alert(<?php echo (isset($LANG['SELECT_TAXON'])?$LANG['SELECT_TAXON']:'Select the Taxonomic Name'); ?>);
+				alert("<?php echo (isset($LANG['SELECT_TAXON'])?$LANG['SELECT_TAXON']:'Select the Taxonomic Name'); ?>");
 				return false;
 			}
 			return true;

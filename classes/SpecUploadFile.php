@@ -91,7 +91,7 @@ class SpecUploadFile extends SpecUploadBase{
 		if($fullPath){
 			//Open and grab header fields
 			$fh = fopen($fullPath,'rb') or die("Can't open file");
-			$this->sourceArr = $this->getHeaderArr($fh);
+			$this->occurSourceArr = $this->getHeaderArr($fh);
 			fclose($fh);
 		}
 	}
@@ -109,13 +109,14 @@ class SpecUploadFile extends SpecUploadBase{
 	 		$fh = fopen($fullPath,'rb') or die("Can't open file");
 
 			$headerArr = $this->getHeaderArr($fh);
+			foreach($headerArr as $k => $v) $headerArr[$k] = strtolower($v);
 
 			//Grab data
 			$this->transferCount = 0;
 			$this->outputMsg('<li>Beginning to load records...</li>',1);
 			while($recordArr = $this->getRecordArr($fh)){
 				$recMap = Array();
-				foreach($this->fieldMap as $symbField => $sMap){
+				foreach($this->occurFieldMap as $symbField => $sMap){
 					$indexArr = array_keys($headerArr,$sMap['field']);
 					$index = array_shift($indexArr);
 					if(array_key_exists($index,$recordArr)){
@@ -131,9 +132,6 @@ class SpecUploadFile extends SpecUploadBase{
 					//Skip loading record
 					unset($recMap);
 					continue;
-				}
-				if($this->uploadType == $this->SKELETAL && (!array_key_exists('recordenteredby', $recMap) || !$recMap['recordenteredby'])){
-					$recMap['recordenteredby'] = 'preprocessed';
 				}
 				$this->loadRecord($recMap);
 				unset($recMap);
@@ -232,7 +230,7 @@ class SpecUploadFile extends SpecUploadBase{
 		$skippedFields = '';
 		$retArr = array();
 		foreach($headerArr as $field){
-			$fieldStr = strtolower($this->encodeString(trim($field)));
+			$fieldStr = $this->encodeString(trim($field));
 			if($fieldStr){
 				if($hasEmptyHeader) $skippedFields .= $fieldStr.', ';
 				else{
@@ -266,7 +264,7 @@ class SpecUploadFile extends SpecUploadBase{
 	}
 
 	public function getDbpkOptions(){
-		$sFields = $this->sourceArr;
+		$sFields = $this->occurSourceArr;
 		sort($sFields);
 		return $sFields;
 	}

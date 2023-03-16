@@ -11,6 +11,7 @@ CollAdmin-#			Upload records; modify metadata
 CollEditor-#		Edit collection records
 CollTaxon-#:#		Edit collection records within taxonomic speciality
 
+ClCreate			Create Checklists
 ClAdmin-#			Checklist write access
 ProjAdmin-#			Project admin access
 KeyAdmin			Edit identification key characters and character states
@@ -198,6 +199,24 @@ class PermissionsManager{
 		return $statusStr;
 	}
 
+	public function addClCreateRole($uid){
+		$statusStr = '';
+		if(is_numeric($uid)){
+
+			$sql = 'SELECT uid,role,tablepk,secondaryVariable,uidassignedby FROM userroles WHERE (uid = '.$uid.') AND (role = "ClCreate");';
+			$rs = $this->conn->query($sql);
+			if(!$rs->num_rows){
+				$sql1 = 'INSERT INTO userroles(uid,role,uidassignedby) '.
+					'VALUES('.$uid.',"ClCreate",'.$GLOBALS["SYMB_UID"].')';
+				if(!$this->conn->query($sql1)){
+					$statusStr = 'ERROR adding user permission: '.$this->conn->error;
+				}
+			}
+			$rs->free();
+		}
+		return $statusStr;
+	}
+
 	public function getTaxonEditorArr($collid, $limitByColl = 0){
 		//grab the current permissions
 		$pArr = array();
@@ -349,7 +368,6 @@ class PermissionsManager{
 		$sql = 'SELECT cl.clid, cl.name FROM fmchecklists cl ';
 		if($clKeys) $sql .= 'WHERE (cl.access != "private") AND (cl.clid NOT IN('.implode(',',$clKeys).')) ';
 		$sql .= 'ORDER BY cl.name';
-		//echo $sql;
 		$result = $this->conn->query($sql);
 		while($row = $result->fetch_object()){
 			$returnArr[$row->clid] = $row->name;

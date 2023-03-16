@@ -2,20 +2,21 @@
 class DwcArchiverDetermination{
 
 	public static function getDeterminationArr($schemaType,$extended){
+		$fieldArr = array();
 		$fieldArr['coreid'] = 'o.occid';
 		$termArr['identifiedBy'] = 'http://rs.tdwg.org/dwc/terms/identifiedBy';
 		$fieldArr['identifiedBy'] = 'd.identifiedBy';
-		$termArr['identifiedByID'] = 'http://symbiota.org/terms/identifiedByID';
-		$fieldArr['identifiedByID'] = 'd.idbyid';
+		//$termArr['identifiedByID'] = 'https://symbiota.org/terms/identifiedByID';
+		//$fieldArr['identifiedByID'] = 'd.idbyid';
 		$termArr['dateIdentified'] = 'http://rs.tdwg.org/dwc/terms/dateIdentified';
 		$fieldArr['dateIdentified'] = 'd.dateIdentified';
 		$termArr['identificationQualifier'] = 'http://rs.tdwg.org/dwc/terms/identificationQualifier';
 		$fieldArr['identificationQualifier'] = 'd.identificationQualifier';
 		$termArr['scientificName'] = 'http://rs.tdwg.org/dwc/terms/scientificName';
 		$fieldArr['scientificName'] = 'd.sciName AS scientificName';
-		$termArr['tidInterpreted'] = 'http://symbiota.org/terms/tidInterpreted';
+		$termArr['tidInterpreted'] = 'https://symbiota.org/terms/tidInterpreted';
 		$fieldArr['tidInterpreted'] = 'd.tidinterpreted';
-		$termArr['identificationIsCurrent'] = 'http://symbiota.org/terms/identificationIsCurrent';
+		$termArr['identificationIsCurrent'] = 'https://symbiota.org/terms/identificationIsCurrent';
 		$fieldArr['identificationIsCurrent'] = 'd.iscurrent';
 		$termArr['scientificNameAuthorship'] = 'http://rs.tdwg.org/dwc/terms/scientificNameAuthorship';
 		$fieldArr['scientificNameAuthorship'] = 'd.scientificNameAuthorship';
@@ -31,12 +32,12 @@ class DwcArchiverDetermination{
 		$fieldArr['identificationReferences'] = 'd.identificationReferences';
 		$termArr['identificationRemarks'] = 'http://rs.tdwg.org/dwc/terms/identificationRemarks';
 		$fieldArr['identificationRemarks'] = 'd.identificationRemarks';
-		$termArr['recordId'] = 'http://portal.idigbio.org/terms/recordId';
-		$fieldArr['recordId'] = 'g.guid AS recordId';
+		$termArr['recordID'] = 'http://portal.idigbio.org/terms/recordID';
+		$fieldArr['recordID'] = 'g.guid AS recordID';
 		$termArr['modified'] = 'http://purl.org/dc/terms/modified';
 		$fieldArr['modified'] = 'd.initialTimeStamp AS modified';
-		$termArr['detid'] = 'http://symbiota.org/terms/detid';
-		$fieldArr['detid'] = 'd.detid';
+		$termArr['detID'] = 'https://symbiota.org/terms/detID';
+		$fieldArr['detID'] = 'd.detID';
 
 		$retArr['terms'] = self::trimBySchemaType($termArr,$schemaType,$extended);
 		$retArr['fields'] = self::trimBySchemaType($fieldArr,$schemaType,$extended);
@@ -65,45 +66,21 @@ class DwcArchiverDetermination{
 		return array_diff_key($detArr,array_flip($trimArr));
 	}
 
-	public static function getSqlDeterminations($fieldArr,$conditionSql){
+	public static function getSql($fieldArr, $tableJoins, $conditionSql){
 		$sql = '';
 		if($fieldArr && $conditionSql){
-			$sqlFrag = '';
-			foreach($fieldArr as $fieldName => $colName){
-				if($colName) $sqlFrag .= ', '.$colName;
+			$sql = 'SELECT ';
+			$delimiter = '';
+			foreach($fieldArr as $fieldSql){
+				if($fieldSql) $sql .= $delimiter.$fieldSql;
+				$delimiter = ', ';
 			}
-			$sql = 'SELECT '.trim($sqlFrag,', ').
-				' FROM omoccurdeterminations d INNER JOIN omoccurrences o ON d.occid = o.occid '.
-				'INNER JOIN guidoccurdeterminations g ON d.detid = g.detid '.
-				'LEFT JOIN taxa t ON d.tidinterpreted = t.tid ';
-			if(strpos($conditionSql,'ts.taxauthid')){
-				$sql .= 'LEFT JOIN taxstatus ts ON o.tidinterpreted = ts.tid ';
-			}
-			if(stripos($conditionSql,'e.parenttid')){
-				$sql .= 'LEFT JOIN taxaenumtree e ON o.tidinterpreted = e.tid ';
-			}
-			if(strpos($conditionSql,'v.clid')){
-				//Search criteria came from custom search page
-				$sql .= 'LEFT JOIN fmvouchers v ON o.occid = v.occid ';
-			}
-			if(strpos($conditionSql,'p.point')){
-				//Search criteria came from map search page
-				$sql .= 'LEFT JOIN omoccurpoints p ON o.occid = p.occid ';
-			}
-			if(strpos($conditionSql,'MATCH(f.recordedby)') || strpos($conditionSql,'MATCH(f.locality)')){
-				$sql .= 'INNER JOIN omoccurrencesfulltext f ON o.occid = f.occid ';
-			}
-			if(stripos($conditionSql,'a.stateid')){
-				//Search is limited by occurrence attribute
-				$sql .= 'INNER JOIN tmattributes a ON o.occid = a.occid ';
-			}
-			elseif(stripos($conditionSql,'s.traitid')){
-				//Search is limited by occurrence trait
-				$sql .= 'INNER JOIN tmattributes a ON o.occid = a.occid '.
-					'INNER JOIN tmstates s ON a.stateid = s.stateid ';
-			}
-			$sql .= $conditionSql.'AND d.appliedstatus = 1 '.
-				'ORDER BY o.collid';
+			$sql .= ' FROM omoccurdeterminations d INNER JOIN omoccurrences o ON d.occid = o.occid
+				INNER JOIN guidoccurdeterminations g ON d.detid = g.detid
+				LEFT JOIN taxa t ON d.tidinterpreted = t.tid ';
+			$sql .= $tableJoins;
+			$sql .= $conditionSql.' AND d.appliedstatus = 1 ';
+			$sql .= 'ORDER BY o.collid';
 			//echo '<div>'.$sql.'</div>'; exit;
 		}
 		return $sql;

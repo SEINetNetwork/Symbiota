@@ -12,6 +12,7 @@ class TaxonomyUtilities {
 	public static function parseScientificName($inStr, $conn = null, $rankId = 0, $kingdomName = null){
 		//Converts scinetific name with author embedded into separate fields
 		$retArr = array('unitname1'=>'','unitname2'=>'','unitind3'=>'','unitname3'=>'');
+		$inStr = trim($inStr);
 		if($inStr && is_string($inStr)){
 			//Remove underscores, common in NPS data
 			$inStr = preg_replace('/_+/',' ',$inStr);
@@ -41,18 +42,24 @@ class TaxonomyUtilities {
 			//Remove extra spaces
 			$inStr = preg_replace('/\s\s+/',' ',$inStr);
 
-			$sciNameArr = explode(' ',$inStr);
+			$sciNameArr = explode(' ',trim($inStr));
 			$okToCloseConn = true;
 			if($conn !== null) $okToCloseConn = false;
 			if(count($sciNameArr)){
-				if(strtolower($sciNameArr[0]) == 'x' || ord($sciNameArr[0]) == 215){
-					//Genus level hybrid
+				if(strtolower($sciNameArr[0]) == 'x' || $sciNameArr[0] == '×' || mb_ord($sciNameArr[0]) == 215){
 					$retArr['unitind1'] = array_shift($sciNameArr);
+				}
+				elseif($sciNameArr[0] == '†' || mb_ord($sciNameArr[0]) == 8224){
+					$retArr['unitind1'] = array_shift($sciNameArr);
+				}
+				elseif(strpos($sciNameArr[0],chr(8224)) === 0 ){
+					$retArr['unitind1'] = '†';
+					$sciNameArr[0] = trim($sciNameArr[0],'†');
 				}
 				//Genus
 				$retArr['unitname1'] = ucfirst(strtolower(array_shift($sciNameArr)));
 				if(count($sciNameArr)){
-					if(strtolower($sciNameArr[0]) == 'x' || ord($sciNameArr[0]) == 215){
+					if(strtolower($sciNameArr[0]) == 'x' || mb_ord($sciNameArr[0]) == 215){
 						//Species level hybrid
 						$retArr['unitind2'] = array_shift($sciNameArr);
 						$retArr['unitname2'] = array_shift($sciNameArr);
@@ -111,9 +118,9 @@ class TaxonomyUtilities {
 						if($testArr = self::cleanInfra($sciStr)){
 							self::setInfraNode($sciStr, $sciNameArr, $retArr, $authorArr, $testArr['infra']);
 						}
-						elseif($kingdomName == 'Animalia' && !$retArr['unitname3'] && ($rankId == 230 || preg_match('/^[a-z]{5,}$/',$sciStr))){
+						elseif($kingdomName == 'Animalia' && !$retArr['unitname3'] && ($rankId == 230 || preg_match('/^[a-z]{3,}$/',$sciStr) || preg_match('/^[A-Z]{3,}$/',$sciStr))){
 							$retArr['unitind3'] = '';
-							$retArr['unitname3'] = $sciStr;
+							$retArr['unitname3'] = strtolower($sciStr);
 							unset($authorArr);
 							$authorArr = array();
 						}
@@ -240,9 +247,7 @@ class TaxonomyUtilities {
 				$status = 'ERROR deleting taxaenumtree prior to re-populating: '.$conn->error;
 			}
 		}
-		else{
-			$status = 'ERROR deleting taxaenumtree prior to re-populating: NULL connection object';
-		}
+		else $status = 'ERROR deleting taxaenumtree prior to re-populating: NULL connection object';
 		return $status;
 	}
 
@@ -283,9 +288,7 @@ class TaxonomyUtilities {
 				}while($cnt < 30);
 			}
 		}
-		else{
-			$status = 'ERROR deleting taxaenumtree prior to re-populating: NULL connection object';
-		}
+		else $status = 'ERROR re-populating taxaenumtree: NULL connection object';
 		return $status;
 	}
 
@@ -345,7 +348,7 @@ class TaxonomyUtilities {
 			'INNER JOIN taxaenumtree e ON t.tid = e.tid '.
 			'INNER JOIN taxa t2 ON e.parenttid = t2.tid '.
 			'SET o.TidInterpreted = t.tid '.
-			'WHERE (o.TidInterpreted IS NULL) AND (t2.rankid = 140) AND (ts.sciname = o.family)';
+			'WHERE (o.TidInterpreted IS NULL) AND (t2.rankid = 140) AND (t.sciname = o.family)';
 		if(!$conn->query($sql2)){
 			echo '<div>ERROR indexing occurrences by matching sciname and family</div>';
 		}

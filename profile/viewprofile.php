@@ -49,8 +49,6 @@ if($isEditor){
 		$country = array_key_exists("country",$_REQUEST)?$_REQUEST["country"]:"";
 		$url = array_key_exists("url",$_REQUEST)?$_REQUEST["url"]:"";
 		$guid = array_key_exists('guid',$_REQUEST)?$_REQUEST['guid']:'';
-		$biography = array_key_exists("biography",$_REQUEST)?$_REQUEST["biography"]:"";
-		$isPublic = array_key_exists("ispublic",$_REQUEST)?$_REQUEST["ispublic"]:"";
 
 		$newPerson = new Person();
 		$newPerson->setUid($userId);
@@ -63,10 +61,7 @@ if($isEditor){
 		$newPerson->setZip($zip);
 		$newPerson->setCountry($country);
 		$newPerson->setEmail($email);
-		$newPerson->setUrl($url);
 		$newPerson->setGUID($guid);
-		$newPerson->setBiography($biography);
-		$newPerson->setIsPublic($isPublic);
 
 		if(!$pHandler->updateProfile($newPerson)){
 			$statusStr = (isset($LANG['FAILED'])?$LANG['FAILED']:'Profile update failed!');
@@ -93,7 +88,7 @@ if($isEditor){
 		$person = $pHandler->getPerson();
 		$tabIndex = 2;
 	}
-	elseif($action == "Change Login"){
+	elseif($action == 'changeLogin'){
 		$pwd = '';
 		if($isSelf && isset($_POST["newloginpwd"])) $pwd = $_POST["newloginpwd"];
 		if(!$pHandler->changeLogin($_POST["newlogin"], $pwd)){
@@ -132,35 +127,15 @@ if($isEditor){
 <html>
 <head>
 	<title><?php echo $DEFAULT_TITLE.' - '. (isset($LANG['VIEW_PROFILE'])?$LANG['VIEW_PROFILE']:'View User Profile'); ?></title>
-    <?php
-      $activateJQuery = true;
-      if(file_exists($SERVER_ROOT.'/includes/head.php')){
-        include_once($SERVER_ROOT.'/includes/head.php');
-      }
-      else{
-        echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-      }
-    ?>
-	<script type="text/javascript" src="../js/jquery.js"></script>
-	<script type="text/javascript" src="../js/jquery-ui.js"></script>
-	<script type="text/javascript" src="../js/tinymce/tinymce.min.js"></script>
+	<link href="<?php echo $CSS_BASE_PATH; ?>/jquery-ui.css" type="text/css" rel="stylesheet">
+	<?php
+	include_once($SERVER_ROOT.'/includes/head.php');
+	?>
 	<script type="text/javascript">
 		var tabIndex = <?php echo $tabIndex; ?>;
-
-		tinymce.init({
-			selector: "textarea",
-			width: "100%",
-			height: 300,
-			menubar: false,
-			plugins: "link,charmap,code,paste",
-			toolbar : "bold italic underline cut copy paste outdent indent undo redo subscript superscript removeformat link charmap code",
-			default_link_target: "_blank",
-			paste_as_text: true
-		});
-
 	</script>
+	<script type="text/javascript" src="../js/jquery.js"></script>
+	<script type="text/javascript" src="../js/jquery-ui.js"></script>
 	<script type="text/javascript" src="../js/symb/profile.viewprofile.js?ver=20170530"></script>
 	<script type="text/javascript" src="../js/symb/shared.js"></script>
 	<style type="text/css">

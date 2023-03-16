@@ -1,7 +1,8 @@
 <?php
 include_once('../config/symbini.php');
 include_once($SERVER_ROOT.'/classes/KeyDataManager.php');
-include_once($SERVER_ROOT.'/content/lang/ident/key.'.$LANG_TAG.'.php');
+if($LANG_TAG == 'en' || !file_exists($SERVER_ROOT.'/content/lang/ident/key.'.$LANG_TAG.'.php')) include_once($SERVER_ROOT.'/content/lang/ident/key.en.php');
+else include_once($SERVER_ROOT.'/content/lang/ident/key.'.$LANG_TAG.'.php');
 header('Content-Type: text/html; charset='.$CHARSET);
 
 $isEditor = false;
@@ -63,16 +64,9 @@ if($chars){
 <html>
 <head>
 	<title><?php echo $DEFAULT_TITLE.$LANG['WEBKEY'].preg_replace('/\<[^\>]+\>/','',$dataManager->getClName()); ?></title>
+	<link href="<?php echo $CSS_BASE_PATH; ?>/jquery-ui.css" type="text/css" rel="stylesheet">
 	<?php
-	$activateJQuery = true;
-	if(file_exists($SERVER_ROOT.'/includes/head.php')){
-		include_once($SERVER_ROOT.'/includes/head.php');
-	}
-	else{
-		echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-		echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-		echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-	}
+	include_once($SERVER_ROOT.'/includes/head.php');
 	include_once($SERVER_ROOT.'/includes/googleanalytics.php');
 	?>
 	<link href="../css/alerts.css" type="text/css" rel="stylesheet" />
@@ -118,11 +112,19 @@ if($chars){
 			var url = 'tools/editor.php?tid='+tid;
 			window.open(url,'keyeditor','toolbar=0,location=0,directories=0,status=0,menubar=0,scrollbars=1,resizable=1,width=1100,height=600,left=20,top=20');
 		}
+
+		function openGlossaryPopup(glossid){
+			var urlStr = "../glossary/individual.php?glossid="+glossid;
+			glossWindow = window.open(urlStr,'glosspopup','toolbar=0,status=1,scrollbars=1,width=900,height=450,left=20,top=20');
+			if(glossWindow.opener == null) glossWindow.opener = self;
+			return false;
+		}
 	</script>
 	<style type="text/css">
 		#title-div { font-weight: bold; font-size: 120% }
 		#char-div {  }
 		#key-chars { display: inline-block; float: right; max-width: 35%; overflow: hidden; }
+		.infoAnchor img{ width: 12px; border: 0px; }
 		fieldset { padding: 5px 10px; }
 		legend { font-weight:bold }
 		.editimg { width: 13px }
@@ -130,6 +132,7 @@ if($chars){
 		.char-heading { font-weight: bold; margin-top:1em; font-size:125%; }
 		#key-taxa { vertical-align: top; }
 		.charHeading {}
+		.headingname { font-weight: bold; margin-top: 1em; font-size: 125%; }
 		.cs-div { display: flex; }
 		.cs-div input { margin-right: 5px }
 		.characterStateName {}
@@ -138,7 +141,7 @@ if($chars){
 		.dynamopt{}
 		.editimg{ margin-left:10px; }
 		.family-div{ font-weight: bold; margin-top: 10px; font-size: 1.3em; }
-		.vern-span{ font-weight: bold; }
+		.vern-span{  }
 		<?php
 		if($displayImages){
 			?>
@@ -262,7 +265,7 @@ echo '</div>';
 			</fieldset>
 		</div>
 		<?php
-		if($isEditor){
+		if($clid && $isEditor){
 			?>
 			<div style="float:right;margin:15px;" title="Edit Character Matrix">
 				<a href="tools/matrixeditor.php?clid=<?php echo $clid; ?>"><img class="editimg" src="../images/edit.png" /><span style="font-size:70%;">CM</span></a>
@@ -281,7 +284,7 @@ echo '</div>';
 			<?php
 			if(!$dynClid && $dataManager->getClAuthors()) echo '<div>'.$dataManager->getClAuthors().'</div>';
 			$count = $dataManager->getTaxaCount();
-			if($count > 0) echo '<div style="margin-bottom:15px;">'.$LANG['SPECCOUNT'].': '.$count.'</div>';
+			if($count) echo '<div style="margin-bottom:15px;">'.$LANG['SPECCOUNT'].': '.$count.'</div>';
 			else echo '<div>'.$LANG['NOMATCH'].'</div>';
 			$clType =$dataManager->getClType();
 			ksort($taxa);
@@ -321,9 +324,4 @@ echo '</div>';
 include($SERVER_ROOT.'/includes/footer.php');
 ?>
 </body>
-<script src="../js/alerts.js" type="text/javascript"></script>
-<script>
-	let alerts = [{'alertMsg': 'Looking for the previous version of Key? You can still access it above via the breadcrumb links located just below top menu bar.'}];
-	handleAlerts(alerts,"keyAlert",true);
-</script>
 </html>

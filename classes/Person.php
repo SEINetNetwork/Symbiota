@@ -23,8 +23,6 @@ class Person{
 	private $email;
 	private $guid;
 	private $url;
-	private $biography;
-	private $isPublic = 0;
 	private $password;
 	private $userTaxonomy = array();		// = array($category => array($utid => array($fieldTitle => $fieldValue))); e.g. array("OccurrenceEditor" => array(24 => array("sciname" => "Asteraceae", "geographicScope" => "Maine")))
 	private $isTaxonomyEditor = false;
@@ -90,14 +88,6 @@ class Person{
 		if($institution) $this->institution = trim($institution);
 	}
 
-	public function getAddress(){
-		return $this->cleanOutStr($this->address);
-	}
-
-	public function setAddress($address){
-		if($address) $this->address = trim($address);
-	}
-
 	public function getCity(){
 		return $this->cleanOutStr($this->city);
 	}
@@ -136,22 +126,6 @@ class Person{
 
 	public function setPhone($phone){
 		if($phone) $this->phone = trim($phone);
-	}
-
-	public function getUrl(){
-		return $this->cleanOutStr($this->url);
-	}
-
-	public function setUrl($url){
-		if($url) $this->url = trim($url);
-	}
-
-	public function getBiography(){
-		return $this->cleanOutStr($this->biography);
-	}
-
-	public function setBiography($bio){
-		if($bio) $this->biography = trim($bio);
 	}
 
 	public function getUserTaxonomy($cat = ''){
@@ -194,19 +168,6 @@ class Person{
 
 	public function getIsTaxonomyEditor(){
 		return $this->isTaxonomyEditor;
-	}
-
-	public function getIsPublic(){
-		if($this->isPublic == 1){
-			return 1;
-		}
-		else{
-			return 0;
-		}
-	}
-
-	public function setIsPublic($isPub){
-		$this->isPublic = $isPub;
 	}
 
 	public function getEmail(){
