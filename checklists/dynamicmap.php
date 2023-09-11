@@ -120,7 +120,7 @@ if(!$zoomInt){
 		}
 	</script>
 </head>
-<body style="background-color:#ffffff;" onload="initialize()">
+<body onload="initialize()">
 	<?php
 		$displayLeftMenu = false;
 		include($SERVER_ROOT.'/includes/header.php');
