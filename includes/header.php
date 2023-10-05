@@ -1,17 +1,25 @@
 <script>
-	if (top.frames.length!=0)
-  		top.location=self.document.location;
-	</script>
-	<table id="maintable" cellspacing="0">
-		<tr>
-			<td id="header" colspan="3">
-				<div style="clear:both;">
-					<div style="clear:both;">
-						<img style="width:100%" src="<?php echo $CLIENT_ROOT; ?>/images/layout/EcoFlorasNA_Banner_2.png" />
-					</div>
-				</div>
-			<div id="top_navbar">
-				<div id="right_navbarlinks">
+<!--
+if (top.frames.length!=0)
+  top.location=self.document.location;
+// -->
+</script>
+<header >
+	<div>
+		<div class="container" style="background-color:#031a12; color:#FFFFFF">
+			<img style="margin-top:5px;margin-bottom:5px;width:300px;" src="<?php echo $CLIENT_ROOT; ?>/images/layout/EcoFlorasNA_Banner_small.png"/>
+			<div id="quicksearchdiv" style="float:right">
+				<!-- -------------------------QUICK SEARCH SETTINGS--------------------------------------- -->
+				<form name="quicksearch" id="quicksearch" action="/portal/taxa/index.php" method="get" onsubmit="return verifyQuickSearch(this);">
+					<div id="quicksearchtext">Search Taxon</div>
+					<input id="taxa" type="text" name="taxon" style="width: 225px">
+					<button name="formsubmit" id="quicksearchbutton" type="submit" value="Search Terms" style="margin-top: 2px">Search taxon</button>
+				</form>
+			</div>
+		</div>
+	</div>
+	<div id="top_navbar">
+		<div id="right_navbarlinks">
 					<?php
 					if($USER_DISPLAY_NAME){
 						?>
@@ -56,7 +64,10 @@
 								<a href="<?php echo $CLIENT_ROOT; ?>/collections/index.php" >Search Collections</a>
 							</li>
 							<li>
-								<a href="<?php echo $CLIENT_ROOT; ?>/collections/map/mapinterface.php" target="_blank">Map Search</a>
+								<a href="<?php echo $CLIENT_ROOT; ?>/imagelib/search.php" >Search Images</a>
+							</li>
+							<li>
+								<a href="<?php echo $CLIENT_ROOT; ?>/collections/map/index.php" target="_blank">Map Search</a>
 							</li>
 						</ul>
 					</li>
@@ -141,11 +152,11 @@
 							</li>
 							<li>
 								<a href="<?php echo $CLIENT_ROOT; ?>/checklists/dynamicmap.php?interface=key&lat=27.32&long=-82.34&zoom=9" >Dynamic Key</a>
-								</li>
+							</li>
 						</ul>
-					</ul>
-				</div>
-			</td>
-		</tr>
-		<tr>
-			<td id='middlecenter'  colspan="3">
+				</ul>
+			</div>
+		</td>
+	</tr>
+	<tr>
+		<td id='middlecenter'  colspan="3">

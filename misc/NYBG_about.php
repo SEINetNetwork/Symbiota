@@ -10,8 +10,7 @@ header("Content-Type: text/html; charset=".$CHARSET);
 		include_once($SERVER_ROOT.'/includes/head.php');
 		?>
 	</head>
-	<body>
-		<table id="maintable">
+	<body style="background-color:#FFFFFF">
 		<?php
 		$displayLeftMenu = false;
 		include($SERVER_ROOT.'/includes/header.php');
@@ -31,6 +30,5 @@ header("Content-Type: text/html; charset=".$CHARSET);
 		<?php
 		include($SERVER_ROOT.'/includes/footer.php');
 		?>
-		</table>
 	</body>
 </html>
