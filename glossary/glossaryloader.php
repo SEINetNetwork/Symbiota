@@ -2,6 +2,7 @@
 include_once('../config/symbini.php');
 include_once($SERVER_ROOT.'/classes/GlossaryUpload.php');
 include_once($SERVER_ROOT.'/classes/GlossaryManager.php');
+include_once($SERVER_ROOT.'/content/lang/glossary/glossaryloader.'.$LANG_TAG.'.php');
 header("Content-Type: text/html; charset=".$CHARSET);
 if(!$SYMB_UID) header('Location: ../profile/index.php?refurl='.$CLIENT_ROOT.'/glossary/glossaryloader.php');
 
@@ -15,9 +16,7 @@ $isEditor = false;
 if($IS_ADMIN || array_key_exists('GlossaryEditor',$USER_RIGHTS)) $isEditor = true;
 
 $loaderManager = new GlossaryUpload();
-$glosManager = new GlossaryManager();
 
-$status = "";
 $fieldMap = array();
 if($isEditor){
 	if($ulFileName){
@@ -46,52 +45,27 @@ if($isEditor){
 ?>
 <html>
 <head>
-	<title><?php echo $DEFAULT_TITLE; ?> Glossary Term Loader</title>
+	<title><?php echo $DEFAULT_TITLE.' '.(isset($LANG['LOADER'])?$LANG['LOADER']:'Glossary Term Loader'); ?></title>
 	<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $CHARSET;?>" />
-  <?php
-      $activateJQuery = true;
-      if(file_exists($SERVER_ROOT.'/includes/head.php')){
-        include_once($SERVER_ROOT.'/includes/head.php');
-      }
-      else{
-        echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-      }
+	<link href="<?php echo $CSS_BASE_PATH; ?>/jquery-ui.css" type="text/css" rel="stylesheet">
+	<?php
+	include_once($SERVER_ROOT.'/includes/head.php');
 	?>
 	<script type="text/javascript" src="../js/jquery.js"></script>
 	<script type="text/javascript" src="../js/jquery-ui.js"></script>
-	<script src="../js/jquery.manifest.js" type="text/javascript"></script>
-	<script src="../js/jquery.marcopolo.js" type="text/javascript"></script>
-	<script type="text/javascript" src="../js/symb/glossary.index.js"></script>
 	<script type="text/javascript">
-		var taxArr = new Array();
-
 		$(document).ready(function() {
-			$('#batchtaxagroup').manifest({
-				marcoPolo: {
-					url: 'rpc/taxalist.php',
-					data: {
-						t: 'batch'
-					},
-					formatItem: function (data) {
-						return data.name;
-					}
+			$("#batchtaxagroup").autocomplete({
+				source: function( request, response ) {
+					$.getJSON( "rpc/taxalist.php", { term: request.term, t: "batch" }, response );
 				},
-				required: true
-			});
-
-			$('#batchtaxagroup').on('marcopoloselect', function (event, data, $item, initial) {
-				taxArr.push({name:data.name,id:data.id});
-			});
-
-			$('#batchtaxagroup').on('manifestremove',function (event, data, $item){
-				for (i = 0; i < taxArr.length; i++) {
-					if(taxArr[i].name == data){
-						taxArr.splice(i,1);
-					}
+				minLength: 3,
+				autoFocus: true,
+				select: function( event, ui ) {
+					if(ui.item) document.getElementById('batchtid').value = ui.item.id;
 				}
 			});
+
 		});
 
 		function verifyUploadForm(f){
@@ -102,16 +76,8 @@ if($isEditor){
 				return false;
 			}
 			if(taxavals.length < 1){
-				alert("Please enter at least one taxonomic group.");
+				alert("<?php echo (isset($LANG['PLEASE_TAXON'])?$LANG['PLEASE_TAXON']:'Please enter at least one taxonomic group.'); ?>");
 				return false;
-			}
-			if(taxArr.length > 0){
-				var tids = [];
-				for(i = 0; i < taxArr.length; i++){
-					tids.push(taxArr[i].id);
-				}
-				var tidstr = tids.join();
-				document.getElementById('batchtid').value = tidstr;
 			}
 			return true;
 		}
@@ -136,9 +102,9 @@ if(isset($glossary_admin_glossaryloaderCrumbs)){
 else{
 	?>
 	<div class="navpath">
-		<a href="../index.php">Home</a> &gt;&gt;
-		<a href="index.php"><b>Glossary Management</b></a> &gt;&gt;
-		<b>Glossary Batch Loader</b>
+		<a href="../index.php"><?php echo (isset($LANG['HOME'])?$LANG['HOME']:'Home'); ?></a> &gt;&gt;
+		<a href="index.php"><b><?php echo (isset($LANG['GLOSS_MGMNT'])?$LANG['GLOSS_MGMNT']:'Glossary Management'); ?></b></a> &gt;&gt;
+		<b><?php echo (isset($LANG['BATCH_LOAD'])?$LANG['BATCH_LOAD']:'Glossary Batch Loader'); ?></b>
 	</div>
 	<?php
 }
@@ -146,26 +112,26 @@ else{
 if($isEditor){
 	?>
 	<div id="innertext">
-		<h1>Glossary Term Batch Loader</h1>
+		<h1><?php echo (isset($LANG['G_BATCH_LOAD'])?$LANG['G_BATCH_LOAD']:'Glossary Term Batch Loader'); ?></h1>
 		<div style="margin:30px;">
 			<div style="margin-bottom:30px;">
-				This page allows a Taxonomic Administrator to batch upload glossary data files.
+				<?php echo (isset($LANG['BATCH_EXPLAIN'])?$LANG['BATCH_EXPLAIN']:'This page allows a Taxonomic Administrator to batch upload glossary data files.'); ?>
 			</div>
 			<?php
 			if($action == 'Map Input File' || $action == 'Verify Mapping'){
 				?>
 				<form name="mapform" action="glossaryloader.php" method="post">
 					<fieldset style="width:90%;">
-						<legend style="font-weight:bold;font-size:120%;">Term Upload Form</legend>
+						<legend style="font-weight:bold;font-size:120%;"><?php echo (isset($LANG['UPLOAD_FORM'])?$LANG['UPLOAD_FORM']:'Term Upload Form'); ?></legend>
 						<div style="margin:10px;">
 						</div>
 						<table border="1" cellpadding="2" style="border:1px solid black">
 							<tr>
 								<th>
-									Source Field
+									<?php echo (isset($LANG['SOURCE_FIELD'])?$LANG['SOURCE_FIELD']:'Source Field'); ?>
 								</th>
 								<th>
-									Target Field
+									<?php echo (isset($LANG['TARGET_FIELD'])?$LANG['TARGET_FIELD']:'Target Field'); ?>
 								</th>
 							</tr>
 							<?php
@@ -182,11 +148,11 @@ if($isEditor){
 									</td>
 									<td>
 										<select name="tf[]" style="background:yellow">
-											<option value="">Field Unmapped</option>
+											<option value=""><?php echo (isset($LANG['UNMAPPED'])?$LANG['UNMAPPED']:'Field Unmapped'); ?></option>
 											<option value="">-------------------------</option>
 											<?php
 											$selStr = "";
-											echo "<option value='unmapped' ".$selStr.">Leave Field Unmapped</option>";
+											echo "<option value='unmapped' ".$selStr.">".(isset($LANG['LEAVE_UNMAPPED'])?$LANG['LEAVE_UNMAPPED']:'Leave Field Unmapped')."</option>";
 											if($selStr){
 												$selStr = 0;
 											}
@@ -232,21 +198,21 @@ if($isEditor){
 				?>
 				<form name="transferform" action="glossaryloader.php" method="post" onsubmit="return checkTransferForm(this)">
 					<fieldset style="width:450px;">
-						<legend style="font-weight:bold;font-size:120%;">Transfer Terms To Central Table</legend>
+						<legend style="font-weight:bold;font-size:120%;"><?php echo (isset($LANG['TRANSFER_TERMS'])?$LANG['TRANSFER_TERMS']:'Transfer Terms To Central Table'); ?></legend>
 						<div style="margin:10px;">
-							Review upload statistics below before activating. Use the download option to review and/or adjust for reload if necessary.
+							<?php echo (isset($LANG['REVIEW_STATS'])?$LANG['REVIEW_STATS']:'Review upload statistics below before activating. Use the download option to review and/or adjust for reload if necessary.'); ?>
 						</div>
 						<div style="margin:10px;">
 							<?php
 							$statArr = $loaderManager->getStatArr();
 							if($statArr){
-								if(isset($statArr['upload'])) echo '<u>Terms uploaded</u>: <b>'.$statArr['upload'].'</b><br/>';
-								echo '<u>Total terms</u>: <b>'.$statArr['total'].'</b><br/>';
-								echo '<u>Terms already in database</u>: <b>'.(isset($statArr['exist'])?$statArr['exist']:0).'</b><br/>';
-								echo '<u>New terms</u>: <b>'.(isset($statArr['new'])?$statArr['new']:0).'</b><br/>';
+								if(isset($statArr['upload'])) echo '<u>'.(isset($LANG['TERMS_UPLOADED'])?$LANG['TERMS_UPLOADED']:'Terms uploaded').'</u>: <b>'.$statArr['upload'].'</b><br/>';
+								echo '<u>'.(isset($LANG['TOTAL_TERMS'])?$LANG['TOTAL_TERMS']:'Total terms').'</u>: <b>'.$statArr['total'].'</b><br/>';
+								echo '<u>'.(isset($LANG['IN_DB'])?$LANG['IN_DB']:'Terms already in database').'</u>: <b>'.(isset($statArr['exist'])?$statArr['exist']:0).'</b><br/>';
+								echo '<u>'.(isset($LANG['NEW_TERMS'])?$LANG['NEW_TERMS']:'New terms').'</u>: <b>'.(isset($statArr['new'])?$statArr['new']:0).'</b><br/>';
 							}
 							else{
-								echo 'Upload statistics are unavailable';
+								echo (isset($LANG['UNAVAILABLE'])?$LANG['UNAVAILABLE']:'Upload statistics are unavailable');
 							}
 							?>
 						</div>
@@ -254,7 +220,7 @@ if($isEditor){
 							<input type="submit" name="action" value="Activate Terms" />
 						</div>
 						<div style="float:right;margin:10px;">
-							<a href="glossaryloader.php?action=downloadcsv" >Download CSV Terms File</a>
+							<a href="glossaryloader.php?action=downloadcsv" ><?php echo (isset($LANG['DOWNLOAD_TERMS'])?$LANG['DOWNLOAD_TERMS']:'Download CSV Terms File'); ?></a>
 						</div>
 					</fieldset>
 				</form>
@@ -263,8 +229,8 @@ if($isEditor){
 			elseif($action == "Activate Terms"){
 				echo '<ul>';
 				$loaderManager->transferUpload();
-				echo "<li>Terms upload appears to have been successful.</li>";
-				echo "<li>Go to <a href='index.php'>Glossary Search</a> page to search for a loaded name.</li>";
+				echo "<li>".(isset($LANG['TERM_SUCCESS'])?$LANG['TERM_SUCCESS']:'Terms upload appears to have been successful').".</li>";
+				echo "<li>".(isset($LANG['GO_TO'])?$LANG['GO_TO']:'Go to')." <a href='index.php'>".(isset($LANG['G_SEARCH'])?$LANG['G_SEARCH']:'Glossary Search')."</a> ".(isset($LANG['TO_SEARCH'])?$LANG['TO_SEARCH']:'page to search for a loaded name.')."</li>";
 				echo '</ul>';
 			}
 			else{
@@ -272,24 +238,27 @@ if($isEditor){
 				<div>
 					<form name="uploadform" action="glossaryloader.php" method="post" enctype="multipart/form-data" onsubmit="return verifyUploadForm(this)">
 						<fieldset style="width:90%;">
-							<legend style="font-weight:bold;font-size:120%;">Term Upload Form</legend>
+							<legend style="font-weight:bold;font-size:120%;"><?php echo (isset($LANG['UPLOAD_FORM'])?$LANG['UPLOAD_FORM']:'Term Upload Form'); ?></legend>
 							<div style="margin:10px;">
+								<?php echo (isset($LANG['UPLOAD_EXPLAIN'])?$LANG['UPLOAD_EXPLAIN']:'
 								Flat structured, CSV (comma delimited) text files can be uploaded here.
-								Please specify the taxonomic groups for which the terms are related.
-								For each language in the CSV file, name the column with the terms as the language the terms are in,
-								and then name all columns related to that term as the language underscore and then the column name
-								(ex. English, English_definition, Spanish, Spanish_Definition, etc.). Columns can be added for the definition,
+								Please specify the taxonomic group to which the terms will be related.
+								If your file contains terms in multiple languages, label each column of terms as the language the terms are in (e.g., English),
+								and then name all columns related to that term as the language, underscore, and then the column name
+								(e.g., English, English_definition, Spanish, Spanish_definition, etc.). Columns can be added for the definition,
 								author, translator, source, notes, and an online resource url.
-								Synonyms can be added by naming the column the language underscore synonym (ex. English_synonym).
+								Synonyms can be added by naming the column the language, underscore, and synonym (e.g., English_synonym).
 								A source can be added for all of the terms by filling in the Enter Sources box below.
 								Please do not use spaces in the column names or file names.
 								If the file upload step fails without displaying an error message, it is possible that the
 								file size exceeds the file upload limits set within your PHP installation (see your php configuration file).
+								'); ?>
+
 							</div>
 							<input type='hidden' name='MAX_FILE_SIZE' value='100000000' />
 							<div>
 								<div class="overrideopt">
-									<b>Enter Taxonomic Groups:</b>
+									<b><?php echo (isset($LANG['ENTER_TAXON'])?$LANG['ENTER_TAXON']:'Enter Taxonomic Group'); ?>:</b>
 									<div style="margin:10px;">
 										<input type="text" name="batchtaxagroup" id="batchtaxagroup" style="width:550px;" value="" onchange="" autocomplete="off" />
 										<input name="batchtid" id="batchtid" type="hidden" value="" />
@@ -298,7 +267,7 @@ if($isEditor){
 							</div>
 							<div>
 								<div class="overrideopt">
-									<b>Enter Sources:</b>
+									<b><?php echo (isset($LANG['ENTER_SOURCE'])?$LANG['ENTER_SOURCE']:'Enter Sources'); ?>:</b>
 									<div style="margin:10px;">
 										<textarea name="batchsources" id="batchsources" maxlength="1000" rows="10" style="width:450px;height:40px;resize:vertical;" ></textarea>
 									</div>
@@ -306,7 +275,7 @@ if($isEditor){
 							</div>
 							<div>
 								<div class="overrideopt">
-									<b>Upload File:</b>
+									<b><?php echo (isset($LANG['UPLOAD'])?$LANG['UPLOAD']:'Upload File'); ?>:</b>
 									<div style="margin:10px;">
 										<input id="genuploadfile" name="uploadfile" type="file" size="40" />
 									</div>
@@ -328,12 +297,10 @@ if($isEditor){
 else{
 	?>
 	<div style='font-weight:bold;margin:30px;'>
-		You do not have permissions to batch upload glossary data
+		<?php echo (isset($LANG['NO_PERM'])?$LANG['NO_PERM']:'You do not have permissions to batch upload glossary data'); ?>
 	</div>
 	<?php
 }
-
-
 include($SERVER_ROOT.'/includes/footer.php');
 ?>
 </body>

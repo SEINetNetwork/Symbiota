@@ -6,6 +6,11 @@ header("Content-Type: text/html; charset=".$CHARSET);
 
 $pid = array_key_exists('pid',$_REQUEST)?$_REQUEST['pid']:0;
 
+//Sanitation
+$pid = htmlspecialchars($pid, HTML_SPECIAL_CHARS_FLAGS);
+if(!is_numeric($pid)) $pid = 0;
+
+
 $clManager = new ChecklistManager();
 $clManager->setProj($pid);
 ?>
@@ -13,15 +18,7 @@ $clManager->setProj($pid);
 <head>
 	<title><?php echo $DEFAULT_TITLE; ?> Species Lists</title>
 	<?php
-	$activateJQuery = false;
-	if(file_exists($SERVER_ROOT.'/includes/head.php')){
-		include_once($SERVER_ROOT.'/includes/head.php');
-	}
-	else{
-		echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-		echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-		echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-	}
+	include_once($SERVER_ROOT.'/includes/head.php');
 	include_once($SERVER_ROOT.'/includes/googleanalytics.php');
 	?>
 </head>
@@ -48,14 +45,14 @@ $clManager->setProj($pid);
 						if($projName == 'Miscellaneous Inventories') $projName = (isset($LANG['MISC_INVENTORIES'])?$LANG['MISC_INVENTORIES']:'Miscellaneous Inventories');
 						echo $projName;
 						?>
-						<a href="<?php echo "clgmap.php?pid=".$pid; ?>" title='<?php echo (isset($LANG['SHOW_MAP'])?$LANG['SHOW_MAP']:'Show inventories on map'); ?>'>
+						<a href="<?php echo "clgmap.php?pid=" . $pid; ?>" title='<?php echo (isset($LANG['SHOW_MAP'])?$LANG['SHOW_MAP']:'Show inventories on map'); ?>'>
 							<img src='../images/world.png' style='width:10px;border:0' />
 						</a>
 					</h3>
 					<ul>
 						<?php
 						foreach($projArr['clid'] as $clid => $clName){
-							echo '<li><a href="checklist.php?clid='.$clid.'&pid='.$pid.'">'.$clName.'</a></li>';
+							echo '<li><a href="checklist.php?clid='.$clid.'&pid=' . $pid.'">' . $clName.'</a></li>';
 						}
 						?>
 					</ul>

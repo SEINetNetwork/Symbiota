@@ -1,6 +1,6 @@
 <?php
 include_once('../../config/symbini.php');
-include_once($SERVER_ROOT.'/classes/ExsiccatiManager.php');
+include_once($SERVER_ROOT.'/classes/OccurrenceExsiccatae.php');
 header("Content-Type: text/html; charset=".$CHARSET);
 
 if(!$SYMB_UID) header('Location: ../../profile/index.php?refurl=../collections/exsiccati/batchimport.php?'.htmlspecialchars($_SERVER['QUERY_STRING'], ENT_QUOTES));
@@ -23,7 +23,7 @@ elseif(array_key_exists('CollEditor',$USER_RIGHTS) && in_array($collid,$USER_RIG
 	$isEditor = 1;
 }
 
-$exsManager = new ExsiccatiManager();
+$exsManager = new OccurrenceExsiccatae($formSubmit?'write':'readonly');
 if($isEditor && $formSubmit){
 	if($formSubmit == 'Import Selected Records'){
 		$statusStr = $exsManager->batchImport($collid,$_POST);
@@ -38,17 +38,9 @@ if($isEditor && $formSubmit){
 <html>
 <head>
 	<title><?php echo $DEFAULT_TITLE; ?> Exsiccatae Batch Transfer</title>
-  <?php
-    $activateJQuery = false;
-    if(file_exists($SERVER_ROOT.'/includes/head.php')){
-      include_once($SERVER_ROOT.'/includes/head.php');
-    }
-    else{
-      echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-      echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-      echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-    }
-  ?>
+	<?php
+	include_once($SERVER_ROOT.'/includes/head.php');
+	?>
 	<script type="text/javascript">
 		function verifyExsTableForm(f){
 			var formVerified = false;
@@ -136,7 +128,7 @@ if($isEditor && $formSubmit){
 			echo '<hr/>';
 		}
 		if(!$ometid){
-			if($exsArr = $exsManager->getTitleArr('', 1)){
+			if($exsArr = $exsManager->getSelectLookupArr()){
 				?>
 				<form name="firstform" action="batchimport.php" method="post" onsubmit="return verifyFirstForm(this)">
 					<fieldset>
@@ -146,9 +138,8 @@ if($isEditor && $formSubmit){
 								<option value="">Choose Exsiccata Series</option>
 								<option value="">------------------------------------</option>
 								<?php
-								//Get only titles with linked specimens
-								foreach($exsArr as $exid => $exArr){
-									echo '<option value="'.$exid.'">'.$exArr['title'].'</option>';
+								foreach($exsArr as $exid => $titleStr){
+									echo '<option value="'.$exid.'">'.$titleStr.'</option>';
 								}
 								?>
 							</select>
@@ -249,8 +240,8 @@ if($isEditor && $formSubmit){
 				<fieldset>
 					<legend><b>Batch Import Module</b></legend>
 					<?php
-					$exsTitleArr = $exsManager->getTitleArr();
-					echo '<h2>'.$exsTitleArr[$ometid]['title'].'</h2>';
+					$exsMeta = $exsManager->getTitleObj($ometid);
+					echo '<h2>'.$exsMeta['title'].'</h2>';
 					if($sourceCollArr = $exsManager->getCollArr($ometid)){
 						?>
 						<div style="margin:10px">

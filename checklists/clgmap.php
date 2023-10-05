@@ -1,17 +1,22 @@
 <?php
 include_once('../config/symbini.php');
 include_once($SERVER_ROOT.'/classes/ChecklistManager.php');
+@include_once($SERVER_ROOT.'/content/lang/header.'.$LANG_TAG.'.php');
 header("Content-Type: text/html; charset=".$CHARSET);
 
 $pid = $_REQUEST['pid'];
 $target = array_key_exists('target',$_REQUEST)?$_REQUEST['target']:'checklists';
+
+//Sanitation
+$pid = htmlspecialchars($pid, HTML_SPECIAL_CHARS_FLAGS);
+if(!is_numeric($pid)) $pid = 0;
 
 $clManager = new ChecklistManager();
 $clManager->setProj($pid);
 ?>
 <html>
 	<head>
-		<title><?php echo $DEFAULT_TITLE; ?> - Species Checklists</title>
+		<title><?php echo $DEFAULT_TITLE.' - '.(isset($LANG['H_INVENTORIES'])?$LANG['H_INVENTORIES']:'Species Checklists'); ?></title>
 		<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
 		<script src="//maps.googleapis.com/maps/api/js?<?php echo (isset($GOOGLE_MAP_KEY) && $GOOGLE_MAP_KEY?'key='.$GOOGLE_MAP_KEY:''); ?>"></script>
 		<script type="text/javascript">
@@ -40,10 +45,10 @@ $clManager->setProj($pid);
 					echo "google.maps.event.addListener(marker".$clid.", 'click', function(){ closeAllInfoWins(); infoWin".$clid.".open(map,marker".$clid."); });\n";
 					//Double click event
 					if($target == 'keys'){
-						echo "var lStr".$clid." = '../ident/key.php?clid=".$clid."&pid=".$pid."&taxon=All+Species';\n";
+						echo "var lStr".$clid." = '../ident/key.php?clid=".$clid."&pid=" . $pid."&taxon=All+Species';\n";
 					}
 					else{
-						echo "var lStr".$clid." = 'checklist.php?clid=".$clid."&pid=".$pid."';\n";
+						echo "var lStr".$clid." = 'checklist.php?clid=".$clid."&pid=" . $pid."';\n";
 					}
 					echo "google.maps.event.addListener(marker".$clid.", 'dblclick', function(){ closeAllInfoWins(); marker".$clid.".setAnimation(google.maps.Animation.BOUNCE); window.location.href = lStr".$clid."; });\n";
 				}

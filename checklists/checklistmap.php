@@ -1,11 +1,14 @@
 <?php
 include_once('../config/symbini.php');
 include_once($SERVER_ROOT.'/classes/ChecklistManager.php');
-header("Content-Type: text/html; charset=".$CHARSET);
+@include_once($SERVER_ROOT.'/content/lang/checklists/checklistmap.'.$LANG_TAG.'.php');
+header('Content-Type: text/html; charset='.$CHARSET);
 
-$clid = $_REQUEST['clid'];
-$thesFilter = array_key_exists("thesfilter",$_REQUEST)?$_REQUEST["thesfilter"]:0;
-$taxonFilter = array_key_exists("taxonfilter",$_REQUEST)?$_REQUEST["taxonfilter"]:"";
+$clid = filter_var($_REQUEST['clid'], FILTER_SANITIZE_NUMBER_INT);
+$thesFilter = array_key_exists('thesfilter',$_REQUEST)?filter_var($_REQUEST['thesfilter'], FILTER_SANITIZE_NUMBER_INT):1;
+$taxonFilter = array_key_exists('taxonfilter',$_REQUEST)?filter_var($_REQUEST['taxonfilter'], FILTER_SANITIZE_STRING):'';
+
+if(!$thesFilter) $thesFilter = 1;
 
 $clManager = new ChecklistManager();
 $clManager->setClid($clid);
@@ -16,20 +19,12 @@ $coordArr = $clManager->getVoucherCoordinates();
 ?>
 <html>
 <head>
-	<title><?php echo $DEFAULT_TITLE; ?> - Checklist Coordinate Map</title>
+	<title><?php echo $DEFAULT_TITLE.' - '.(isset($LANG['COORD_MAP'])?$LANG['COORD_MAP']:'Checklist Coordinate Map'); ?></title>
 	<?php
-    $activateJQuery = false;
-    if(file_exists($SERVER_ROOT.'/includes/head.php')){
-      include_once($SERVER_ROOT.'/includes/head.php');
-    }
-    else{
-      echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-      echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-      echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-    }
-    include_once($SERVER_ROOT.'/includes/googleanalytics.php');
-    ?>
-	<script src="//maps.googleapis.com/maps/api/js?v=3.exp&libraries=drawing<?php echo (isset($GOOGLE_MAP_KEY) && $GOOGLE_MAP_KEY?'&key='.$GOOGLE_MAP_KEY:''); ?>"></script>
+	//include_once($SERVER_ROOT.'/includes/head.php');
+	include_once($SERVER_ROOT.'/includes/googleanalytics.php');
+	?>
+	<script src="//maps.googleapis.com/maps/api/js?v=3.exp&libraries=drawing<?php echo (isset($GOOGLE_MAP_KEY) && $GOOGLE_MAP_KEY?'&key='.$GOOGLE_MAP_KEY:''); ?>&callback=Function.prototype"></script>
 	<script type="text/javascript">
 		var map;
 		var puWin;
@@ -72,33 +67,34 @@ $coordArr = $clManager->getVoucherCoordinates();
 					}
 				}
 			}
-			//Check for and add checklist polygon
 			$clMeta = $clManager->getClMetaData();
 			if($clMeta['footprintwkt']){
-				?>
-				var polyPointArr = [];
-				<?php
-				$footPrintWkt = $clMeta['footprintwkt'];
-				if(substr($footPrintWkt, 0, 7) == 'POLYGON'){
-					$footPrintWkt = substr($footPrintWkt, 10, -2);
-					$pointArr = explode(',', $footPrintWkt);
-					foreach($pointArr as $pointStr){
-						$llArr = explode(' ', trim($pointStr));
-						if($llArr[0] > 90 || $llArr[0] < -90) break;
+				//Add checklist polygon
+				$wkt = $clMeta['footprintwkt'];
+				if(substr($wkt,0,7) == 'POLYGON') $wkt = substr($wkt,7);
+				else if(substr($wkt,0,12) == 'MULTIPOLYGON') $wkt = substr($wkt,12);
+				$coordArr = explode('),(', $wkt);
+				foreach($coordArr as $k => $polyFrag){
+					if($pointArr = explode(',', trim($polyFrag,' (),'))){
+						echo 'var polyPointArr'.$k.' = [];';
+						foreach($pointArr as $pointStr){
+							$llArr = explode(' ', trim($pointStr));
+							if($llArr[0] > 90 || $llArr[0] < -90) break;
+							?>
+							var polyPt = new google.maps.LatLng(<?php echo $llArr[0].','.$llArr[1]; ?>);
+							polyPointArr<?php echo $k; ?>.push(polyPt);
+							llBounds.extend(polyPt);
+							<?php
+						}
 						?>
-						var polyPt = new google.maps.LatLng(<?php echo $llArr[0].','.$llArr[1]; ?>);
-						polyPointArr.push(polyPt);
-						llBounds.extend(polyPt);
+						var footPoly<?php echo $k; ?> = new google.maps.Polygon({
+							paths: polyPointArr<?php echo $k; ?>,
+							strokeWeight: 2,
+							fillOpacity: 0.4,
+							map: map
+						});
 						<?php
 					}
-					?>
-					var footPoly = new google.maps.Polygon({
-						paths: polyPointArr,
-						strokeWeight: 2,
-						fillOpacity: 0.4,
-						map: map
-					});
-					<?php
 				}
 			}
 			?>
@@ -129,10 +125,10 @@ $coordArr = $clManager->getVoucherCoordinates();
 	if(!$coordArr){
 		?>
 		<div style='font-size:120%;font-weight:bold;'>
-			Your query apparently does not contain any records with coordinates that can be mapped.
+			<?php echo (isset($LANG['NO_COORDS'])?$LANG['NO_COORDS']:'Your query apparently does not contain any records with coordinates that can be mapped'); ?>.
 		</div>
 		<div style="margin:15px;">
-			It may be that the vouchers have rare/threatened status that require the locality coordinates be hidden.
+			<?php echo (isset($LANG['MAYBE_RARE'])?$LANG['MAYBE_RARE']:'It may be that the vouchers have rare/threatened status that require the locality coordinates be hidden'); ?>.
 		</div>
 		<?php
 	}

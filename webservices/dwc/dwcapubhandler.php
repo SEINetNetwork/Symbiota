@@ -6,7 +6,8 @@
  *   collid (default: 0 [all collections]): PK for targeted collection. More than one codes can be supplied by separating them commas (e.g. collid=2,3,77)
  *   cond: search variable conditions to limit return based on the indexed Darwin Core fields
  *       Format: cond=<field1>-<optional operator>:<value1>;<field2>-<optional operator>:<value2>
- *       Fields allowed: catalognumber, othercatalognumbers, occurrenceid, family, sciname, country, stateprovince, county, municipality, recordedby, recordnumber, eventdate, decimallatitude, decimallongitude, minimumelevationinmeters, maximumelevationinmeters, processingstatus, datelastmodified, dateentered
+ *       Fields allowed: catalogNumber, otherCatalogNumbers, occurrenceID, family, sciname, country, stateProvince, county, municipality, recordedBy, recordNumber, eventDate,
+ *       	decimalLatitude, decimalLongitude, minimumElevationInMeters, maximumElevationInMeters, cultivationStatus, processingStatus, dateLastModified, dateEntered, dbpk
  *       Optional operators: EQUALS, NULL, NOTNULL, START, LIKE, LESSTHAN, GREATERTHAN
  *       Note the dash separating the field and operator; operator is not case specific
  *       Multiple conditions can be supplied separated by semicolons
@@ -24,69 +25,70 @@
  *
  * Examples:
  *
- *   http://swbiodiversity.org/seinet/webservices/dwc/dwcapubhandler.php?collid=17
- *   http://swbiodiversity.org/seinet/webservices/dwc/dwcapubhandler.php?collid=17&cond=stateProvince:New%20Mexico
- *   http://mycoportal.org/portal/webservices/dwc/dwcapubhandler.php?collid=15&cond=dateentered-greaterthan=2015-08-01
- *   http://lichenportal.org/portal/webservices/dwc/dwcapubhandler.php?collid=22&cond=processingstatus-equals:reviewed;dateentered-greaterthan:2015-04-01
- *   http://swbiodiversity.org/seinet/webservices/dwc/dwcapubhandler.php?cond=sciname:Berberis%20repens
- *   http://swbiodiversity.org/seinet/webservices/dwc/dwcapubhandler.php?cond=sciname:Berberis%20repens&usethes=1
+ *   https://swbiodiversity.org/seinet/webservices/dwc/dwcapubhandler.php?collid=17
+ *   https://swbiodiversity.org/seinet/webservices/dwc/dwcapubhandler.php?collid=17&cond=stateProvince:New%20Mexico
+ *   https://mycoportal.org/portal/webservices/dwc/dwcapubhandler.php?collid=15&cond=dateentered-greaterthan=2015-08-01
+ *   https://lichenportal.org/portal/webservices/dwc/dwcapubhandler.php?collid=22&cond=processingstatus-equals:reviewed;dateentered-greaterthan:2015-04-01
+ *   https://swbiodiversity.org/seinet/webservices/dwc/dwcapubhandler.php?cond=sciname:Berberis%20repens
+ *   https://swbiodiversity.org/seinet/webservices/dwc/dwcapubhandler.php?cond=sciname:Berberis%20repens&usethes=1
  *
  */
 
 include_once('../../config/symbini.php');
-include_once($SERVER_ROOT.'/classes/DwcArchiverCore.php');
+include_once($SERVER_ROOT . '/classes/DwcArchiverCore.php');
 
-$collid = array_key_exists("collid",$_REQUEST)?$_REQUEST["collid"]:0;
-$cond = array_key_exists("cond",$_REQUEST)?$_REQUEST["cond"]:'';
-$collType = array_key_exists("colltype",$_REQUEST)?$_REQUEST["colltype"]:'specimens';
-$schemaType = array_key_exists('schema',$_REQUEST)?$_REQUEST['schema']:'dwc';
-$extended = array_key_exists('extended',$_REQUEST)?$_REQUEST['extended']:0;
-$includeDets = array_key_exists("dets",$_REQUEST)?$_REQUEST["dets"]:1;
-$includeImgs = array_key_exists("imgs",$_REQUEST)?$_REQUEST["imgs"]:1;
-$includeAttributes = array_key_exists("attr",$_REQUEST)?$_REQUEST["attr"]:0;
+$collid = array_key_exists('collid', $_REQUEST) ? $_REQUEST['collid'] : 0;
+$cond = array_key_exists('cond', $_REQUEST) ? $_REQUEST['cond'] : '';
+$collType = array_key_exists('colltype', $_REQUEST) ? $_REQUEST['colltype'] : '';
+$schemaType = array_key_exists('schema', $_REQUEST) ? $_REQUEST['schema'] : 'dwc';
+$extended = array_key_exists('extended', $_REQUEST) ? $_REQUEST['extended'] : 0;
+$includeDets = array_key_exists('dets', $_REQUEST) ? $_REQUEST['dets'] : 1;
+$includeImgs = array_key_exists('imgs', $_REQUEST) ? $_REQUEST['imgs'] : 1;
+$includeAttributes = array_key_exists('attr', $_REQUEST) ? $_REQUEST['attr'] : 0;
+$includeMaterialSample = array_key_exists('matsample', $_REQUEST) ? $_REQUEST['matsample'] : 0;
+$pubGuid = array_key_exists('publicationguid', $_REQUEST) ? $_REQUEST['publicationguid'] : 0;
+$requestPortalGuid = array_key_exists('portalguid', $_REQUEST) ? $_REQUEST['portalguid'] : 0;
+
+$_SESSION['citationvar'] = 'collid=' . $collid;
 
 $dwcaHandler = new DwcArchiverCore();
 
 $dwcaHandler->setVerboseMode(0);
-$dwcaHandler->setCollArr($collid,$collType);
+$dwcaHandler->setCollArr($collid, $collType);
 
 $redactLocalities = 1;
-if($IS_ADMIN || array_key_exists("CollAdmin", $USER_RIGHTS)){
+if ($IS_ADMIN || array_key_exists('CollAdmin', $USER_RIGHTS)) {
 	$redactLocalities = 0;
-}
-elseif(array_key_exists("RareSppAdmin", $USER_RIGHTS) || array_key_exists("RareSppReadAll", $USER_RIGHTS)){
+} elseif (array_key_exists('RareSppAdmin', $USER_RIGHTS) || array_key_exists('RareSppReadAll', $USER_RIGHTS)) {
 	$redactLocalities = 0;
-}
-elseif(array_key_exists('CollEditor', $USER_RIGHTS) && in_array($collid, $USER_RIGHTS['CollEditor'])){
+} elseif (array_key_exists('CollEditor', $USER_RIGHTS) && in_array($collid, $USER_RIGHTS['CollEditor'])) {
 	$redactLocalities = 0;
-}
-elseif(array_key_exists('RareSppReader', $USER_RIGHTS) && in_array($collid, $USER_RIGHTS['RareSppReader'])){
+} elseif (array_key_exists('RareSppReader', $USER_RIGHTS) && in_array($collid, $USER_RIGHTS['RareSppReader'])) {
 	$redactLocalities = 0;
 }
 $dwcaHandler->setRedactLocalities($redactLocalities);
 
-if($cond){
+if ($cond) {
 	//String of cond-key/value pairs (e.g. country:USA,United States;stateprovince:Arizona,New Mexico;county-start:Pima,Eddy
-	$cArr = explode(';',$cond);
-	foreach($cArr as $rawV){
-		$tok = explode(':',$rawV);
-		if($tok){
+	$cArr = explode(';', $cond);
+	foreach ($cArr as $rawV) {
+		$tok = explode(':', $rawV);
+		if ($tok) {
 			$field = $tok[0];
 			$cond = 'EQUALS';
 			$valueArr = array();
-			if($p = strpos($tok[0],'-')){
-				$field = substr($tok[0],0,$p);
-				$cond = substr($tok[0],$p+1);
+			if ($p = strpos($tok[0], '-')) {
+				$field = substr($tok[0], 0, $p);
+				$cond = substr($tok[0], $p + 1);
 			}
-			if(isset($tok[1]) && $tok[1]){
-				$valueArr = explode(',',$tok[1]);
+			if (isset($tok[1]) && $tok[1]) {
+				$valueArr = explode(',', $tok[1]);
 			}
-			if($valueArr){
-				foreach($valueArr as $v){
+			if ($valueArr) {
+				foreach ($valueArr as $v) {
 					$dwcaHandler->addCondition($field, $cond, $v);
 				}
-			}
-			else{
+			} else {
 				$dwcaHandler->addCondition($field, $cond);
 			}
 		}
@@ -97,13 +99,16 @@ $dwcaHandler->setExtended($extended);
 $dwcaHandler->setIncludeDets($includeDets);
 $dwcaHandler->setIncludeImgs($includeImgs);
 $dwcaHandler->setIncludeAttributes($includeAttributes);
+$dwcaHandler->setIncludeMaterialSample($includeMaterialSample);
+$dwcaHandler->setPublicationGuid($pubGuid);
+$dwcaHandler->setRequestPortalGuid($requestPortalGuid);
 
 $archiveFile = $dwcaHandler->createDwcArchive();
-if($archiveFile){
-	//ob_start();
+if ($archiveFile) {
+	ob_start();
 	header('Content-Description: DwC-A File Transfer');
 	header('Content-Type: application/zip');
-	header('Content-Disposition: attachment; filename='.basename($archiveFile));
+	header('Content-Disposition: attachment; filename=' . basename($archiveFile));
 	header('Content-Transfer-Encoding: binary');
 	header('Expires: 0');
 	header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
@@ -111,18 +116,16 @@ if($archiveFile){
 	header('Content-Length: ' . filesize($archiveFile));
 	ob_clean();
 	flush();
-	//od_end_clean();
+	ob_end_clean();
 	readfile($archiveFile);
 	unlink($archiveFile);
 	exit;
-}
-else{
+} else {
 	header('Content-Description: DwC-A File Transfer Error');
 	header('Content-Type: text/plain');
 	header('Expires: 0');
 	header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
 	header('Pragma: public');
-	if($dwcaHandler->getErrorMessage()) echo $dwcaHandler->getErrorMessage();
+	if ($dwcaHandler->getErrorMessage()) echo $dwcaHandler->getErrorMessage();
 	else echo 'ERROR: unable to create archive';
 }
-?>
