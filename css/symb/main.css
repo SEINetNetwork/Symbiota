@@ -1,20 +1,24 @@
 /* Modify styles within this file to override styles within base.css file 
  * 
  **/
-body {
-  width: 80%;
-  min-width: 1400px;
-  margin-top: 0px;
-  font-family: Verdana, Geneva, sans-serif;
-  background-color: #e9e9e9;
-  font-size: 12px;
+body{
+	width: 85%;
+	min-width:1400px;
+	margin-top:0px;
+	margin-left:auto;
+	margin-right:auto;
+	font-family: Verdana, Geneva, sans-serif;
+	background-color:#50c878 !important;
+	font-size: 12px;
 }
 
 /*Main table framework*/
-#maintable {
-  width: 100%;
-  background-color: #ffffff;
-  border: 1px solid grey;
+#maintable{
+	width: 80%;
+	background-color:#FFFFFF;
+	border:1px solid grey;
+	margin-left:auto;
+	margin-right:auto;
 }
 
 #maintable td {

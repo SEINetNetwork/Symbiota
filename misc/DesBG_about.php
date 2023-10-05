@@ -15,24 +15,16 @@ header("Content-Type: text/html; charset=".$CHARSET);
 		$displayLeftMenu = false;
 		include($SERVER_ROOT.'/includes/header.php');
 		?>
-		<div class="navpath">
+		<div class="navpath" style="margin:10px;">
 			<a href="../index.php"><?php echo (isset($LANG['HOME'])?$LANG['HOME']:'Home'); ?></a> &gt;
 			<b><?php echo (isset($LANG['ABOUT_PROJECT'])?$LANG['ABOUT_PROJECT']:'DesBG > About the Project'); ?></b>
 		</div>
-		<div style="display: block; margin-left: auto; margin-right:auto;width: 25%;">
-		<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/Phoenix_Ecoflora_Final.png"/>
-		</div>
-		<!-- This is inner text! -->
-		<div id="innertext" style="margin-left:150px; margin-right:150px; text-align:center">
-			<h1>Metro Phoenix EcoFlora<h1>
-			<h4>[Under Construction]</h4>
-			<h3><a href="https://www.inaturalist.org/projects/metro-phoenix-ecoflora">View our project on iNaturalist</a></h3>
-			<h3> More information here: <a href="https://dbg.org/partner-initiatives/ecoflora/">dbg.org/partner-initiatives/ecoflora/</a></h3>
-			<p></p>
-			<p>The Metro Phoenix EcoFlora project is making plant science meaningful and open for everyone, while we learn about the biodiversity of our urban desert home. We need your help! This is an opportunity to contribute to real-life science while studying plants in metro Phoenix, what is happening with them, and how these plants are interacting with other organisms. The information gathered through this project will provide insight into bigger biodiversity science questions and contribute to local conservation efforts.</p>
-			<hr>
-		<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/cazca.png" "width=500px"/>
-
+		<h1>
+		<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/Phoenix_Ecoflora_Final.png" style="float:left;height:150px;margin:10px">
+		Metro Phoenix EcoFlora<h1>
+		<h2><span style="font-weight:normal;">The Metro Phoenix EcoFlora project was based at the Desert Botanical Garden, and focused on the flora of the Metro Phoenix Area (Maricopa & Pinal counties).</span></p>
+		<h3 style="clear:left;text-align:center;"><a href="https://www.inaturalist.org/projects/metro-phoenix-ecoflora">View our project on iNaturalist</a></h3>
+		<h3 style="text-align:center;"> More information here: <a href="https://dbg.org/partner-initiatives/ecoflora/">dbg.org/partner-initiatives/ecoflora/</a></h3>
 		</div>
 		<?php
 		include($SERVER_ROOT.'/includes/footer.php');
