@@ -52,7 +52,6 @@ if (top.frames.length!=0)
 					<span style="margin-left:5px;margin-right:5px;">
 						<a href='<?php echo $CLIENT_ROOT; ?>/sitemap.php'>Sitemap</a>
 					</span>
-
 				</div>
 				<ul id="hor_dropdown">
 					<li>
