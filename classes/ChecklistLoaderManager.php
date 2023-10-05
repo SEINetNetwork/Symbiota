@@ -29,19 +29,20 @@ class ChecklistLoaderManager extends Manager {
 		$headerArr = Array();
 		$headerData = fgetcsv($fh);
 		foreach($headerData as $k => $v){
-			$vStr = strtolower($v);
-			$vStr = str_replace(Array(" ",".","_"),"",$vStr);
-			if(in_array($vStr, Array("scientificnamewithauthor","scientificname","taxa","speciesname","taxon"))){
-				$vStr = 'sciname';
-			}
+			if(substr($v,0,3)==chr(hexdec('EF')).chr(hexdec('BB')).chr(hexdec('BF'))) $v = substr($v,3);
+			$vStr = strtolower(trim($v));
+			$vStr = str_replace(Array(' ','.','_'),'',$vStr);
+			if(in_array($vStr, Array('scientificnamewithauthor','scientificname','taxa','speciesname','taxon'))) $vStr = 'sciname';
 			$headerArr[$vStr] = $k;
 		}
-		if(array_key_exists("sciname",$headerArr)){
+		if(array_key_exists('sciname',$headerArr)){
 			$cnt = 0;
 			ob_flush();
 			flush();
 			while($valueArr = fgetcsv($fh)){
-				$sciNameStr = $this->cleanInStr($valueArr[$headerArr["sciname"]]);
+				//Remove UTF-8 NO-BREAK SPACE codepoints
+				$sciNameStr = str_replace(chr(194).chr(160), ' ', $valueArr[$headerArr['sciname']]);
+				$sciNameStr = $this->cleanInStr($sciNameStr);
 				if($sciNameStr){
 					$tid = 0;
 					$rankId = 0;
@@ -61,7 +62,7 @@ class ChecklistLoaderManager extends Manager {
 							'WHERE ts.taxauthid = 1 ';
 					}
 					$cleanSciName = $this->encodeString($sciNameArr['sciname']);
-					$sql .= 'AND (t.sciname IN("'.$sciNameStr.'"'.($cleanSciName?',"'.$cleanSciName.'"':'').'))';
+					$sql .= 'AND (t.sciname IN("'.$sciNameStr.'"'.($cleanSciName && $cleanSciName != $sciNameStr ?',"'.$cleanSciName.'"':'').'))';
 					$rs = $this->conn->query($sql);
 					if($rs){
 						while($row = $rs->fetch_object()){
@@ -107,7 +108,6 @@ class ChecklistLoaderManager extends Manager {
 							}
 
 							$sql = 'INSERT INTO fmchklsttaxalink (tid,clid'.$sqlInsert.') VALUES ('.$tid.', '.$this->clid.$sqlValues.')';
-							//echo $sql; exit;
 							if($this->conn->query($sql)){
 								$successCnt++;
 							}

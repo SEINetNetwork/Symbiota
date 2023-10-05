@@ -1,7 +1,7 @@
 <?php
 /*
 ------------------
-Language: Espa�ol (Spanish)
+Language: Español (Spanish)
 ------------------
 */
 
@@ -20,25 +20,25 @@ $LANG['EXCLUSION_LIST'] = 'Lista de especies de exclusi&oacute;n para';
 $LANG['INCLUDE_TAXA'] = 'Incluye taxa de las siguientes listas';
 $LANG['TAXA_EXCLUDED'] = 'Taxa excluida expl&iacute;citamente';
 $LANG['AUTHORS'] = 'Autores';
-$LANG['MOREDETS'] = 'Mas Detalles';
-$LANG['LESSDETS'] = 'Menos Detalles';
+$LANG['MOREDETAILS'] = 'mas detalles';
+$LANG['LESSDETAILS'] = 'menos detalles';
 $LANG['CITATION'] = 'Publicaci&oacute;n';
 $LANG['OPTIONS'] = 'Opciones';
 $LANG['SEARCH'] = 'Buscar';
 $LANG['DISPLAY_SYNONYMS'] = 'Mostrar Sin&oacute;nimos';
 $LANG['COMMON'] = 'Nombres Comunes';
-$LANG['AUTHORS'] = 'Autores';
 $LANG['SYNON'] = 'Sin&oacute;nimos';
 $LANG['FILTER'] = 'Filtro';
 $LANG['OGCHECK'] = 'Listado de Comprobaci&oacute;n Original';
 $LANG['NOTESVOUC'] = 'Notas &amp; Vouchers';
-$LANG['TAXONAUT'] = 'Autores del Tax&oacute;n';
+$LANG['TAXONAUTHOR'] = 'Autores del Tax&oacute;n';
 $LANG['TAXONABC'] = 'Mostrar Taxa Alfab&eacute;ticamente';
 $LANG['BUILD_LIST'] = 'Mostrar Lista';
 $LANG['DOWNLOAD_CHECKLIST'] = 'Descargar Lista';
 $LANG['PRINT_BROWSER'] = 'Imprimir';
 $LANG['EXPORT_DOCX'] = 'Exportar a DOCX';
-$LANG['DISPLAYIMG'] = 'Mostrar como Im&aacute;genes';
+$LANG['DISPLAYIMAGES'] = 'Mostrar como imágenes';
+$LANG['DISPLAYVOUCHERIMAGES'] = 'Usar imágenes de vouchers como imagen preferida';
 $LANG['SYNONYMS'] = 'Sin&oacute;nimos';
 $LANG['NEWSPECIES'] = 'Agregar Especie a la Lista';
 $LANG['TAXON'] = 'Tax&oacute;n';
@@ -60,7 +60,6 @@ $LANG['FAMILIES'] = 'Familias';
 $LANG['GENERA'] = 'G&eacute;neros';
 $LANG['SPECIES'] = 'Especies';
 $LANG['TOTAL_TAXA'] = 'Total de Taxa';
-$LANG['DETAILS_EXPLANATION'] = 'Para m&aacute;s informaci&oacute;n, haga clic aqu&iacute;';
 $LANG['DETAILS'] = 'detalles';
 $LANG['IMAGE'] = 'Im&aacute;gen';
 $LANG['NOTY'] = 'a&uacute;n no';
@@ -70,7 +69,7 @@ $LANG['VIEW_RELATED'] = 'Ver muestras relacionadas';
 $LANG['MORE'] = 'm&aacute;s';
 $LANG['LESS'] = 'menos';
 $LANG['NOTAXA'] = 'No se han encontrado Taxa';
-$LANG['CHECKNULL'] = 'ERROR: Identificaci&oacute;n del Listado de Comprobaci&oacute;n es nula';
+$LANG['CHECKNULL'] = 'ERROR: identificador de lista de Comprobación no válido';
 $LANG['DISPLAYNEXT'] = 'Mostrar Siguiente';
 $LANG['TAXA'] = 'taxa';
 $LANG['LOCALITY'] = 'Localidad';
@@ -78,5 +77,5 @@ $LANG['ABSTRACT'] = 'Resumen';
 $LANG['COMMENTS'] = 'Comentarios';
 $LANG['PAGE'] = 'P&aacute;gina';
 $LANG['OF'] = 'de';
-$LANG['RESCHECK'] = 'Listado de Comprobaci&oacute;n de Investigaci&oacute;n';
+$LANG['CHECKLIST'] = 'Listado de Comprobaci&oacute;n';
 ?>

@@ -8,9 +8,7 @@ $hMid = $_POST['hmid'];
 $hSuffix = $_POST['hsuffix'];
 $lFooter = $_POST['lfooter'];
 $columnCount = $_POST['labeltype'];
-$labelIndexGlobal = (isset($_POST['labelformatindex-g'])?$_POST['labelformatindex-g']:'');
-$labelIndexColl = (isset($_POST['labelformatindex-c'])?$_POST['labelformatindex-c']:'');
-$labelIndexUser = (isset($_POST['labelformatindex-u'])?$_POST['labelformatindex-u']:'');
+$labelformatindex = (isset($_POST['labelformatindex'])?$_POST['labelformatindex']:'');
 $showcatalognumbers = ((array_key_exists('catalognumbers',$_POST) && $_POST['catalognumbers'])?1:0);
 $useBarcode = array_key_exists('bc',$_POST)?$_POST['bc']:0;
 $useSymbBarcode = array_key_exists('symbbc',$_POST)?$_POST['symbbc']:0;
@@ -20,13 +18,17 @@ $outputType = array_key_exists('outputtype',$_POST)?$_POST['outputtype']:'html';
 $action = array_key_exists('submitaction',$_POST)?$_POST['submitaction']:'';
 
 //Sanitation
-$hPrefix = filter_var($hPrefix, FILTER_SANITIZE_STRING);
-$hMid = filter_var($hMid, FILTER_SANITIZE_STRING);
-$hSuffix = filter_var($hSuffix, FILTER_SANITIZE_STRING);
-$lFooter = filter_var($lFooter, FILTER_SANITIZE_STRING);
-if(!is_numeric($labelIndexGlobal)) $labelIndexGlobal = '';
-if(!is_numeric($labelIndexColl)) $labelIndexColl = '';
-if(!is_numeric($labelIndexUser)) $labelIndexUser = '';
+$hPrefix = strip_tags($hPrefix, '<br><b><u><i>');
+$hMid = strip_tags($hMid, '<br><b><u><i>');
+$hSuffix = strip_tags($hSuffix, '<br><b><u><i>');
+$lFooter = strip_tags($lFooter, '<br><b><u><i>');
+$labelCat = substr($labelformatindex,0,1);
+if($labelCat == 'g') $labelCat = 'global';
+elseif($labelCat == 'c') $labelCat = 'coll';
+elseif($labelCat == 'u') $labelCat = 'user';
+else $labelCat = '';
+$labelIndex = substr($labelformatindex,2);
+if(!is_numeric($labelIndex)) $labelIndex = '';
 if(!is_numeric($columnCount) && $columnCount != 'packet') $columnCount = 2;
 if(!is_numeric($showcatalognumbers)) $showcatalognumbers = 0;
 if(!is_numeric($useBarcode)) $useBarcode = 0;
@@ -51,10 +53,7 @@ else{
 	header("Content-Type: text/html; charset=".$CHARSET);
 }
 
-$targetLabelFormatArr = false;
-if(is_numeric($labelIndexGlobal)) $targetLabelFormatArr = $labelManager->getLabelFormatByID('global',$labelIndexGlobal);
-elseif(is_numeric($labelIndexColl)) $targetLabelFormatArr = $labelManager->getLabelFormatByID('coll',$labelIndexColl);
-elseif(is_numeric($labelIndexUser)) $targetLabelFormatArr = $labelManager->getLabelFormatByID('user',$labelIndexUser);
+$targetLabelFormatArr = $labelManager->getLabelFormatByID($labelCat,$labelIndex);
 
 $isEditor = 0;
 if($SYMB_UID){
@@ -67,10 +66,7 @@ if($SYMB_UID){
 	<head>
 		<title><?php echo $DEFAULT_TITLE; ?> Labels</title>
 		<style type="text/css">
-			<?php
-			if(isset($targetLabelFormatArr['defaultStyles'])) echo 'body{ '.$targetLabelFormatArr['defaultStyles']." } \n";
-			?>
-			.row { display: flex; flex-wrap: wrap; margin-left: auto; margin-right: auto;}
+			.row { display: flex; flex-wrap: nowrap; margin-left: auto; margin-right: auto;}
 			.label { page-break-before: auto; page-break-inside: avoid; }
 			<?php
 			if($columnCount == 'packet'){
@@ -97,7 +93,7 @@ if($SYMB_UID){
 			}
 			elseif($columnCount != 1){
 				?>
-				.label { width:<?php echo (floor(100/$columnCount)-3);?>%;padding:10px; }
+				.label { width:<?php echo (floor(90/$columnCount)-floor($columnCount/4));?>%;padding:10pt; }
 				<?php
 			}
 			?>
@@ -105,12 +101,10 @@ if($SYMB_UID){
 			/* .cnBarcodeDiv { clear:both; padding-top:15px; }
 			.catalogNumber { clear:both; text-align:center; }
 			.otherCatalogNumbers { clear:both; text-align:center; }
-      .symbBarcode { padding-top:10px; } */
-      @media print {
-        .controls {
-          display: none;
-        }
-      }
+			.symbBarcode { padding-top:10px; } */
+			.label-header { clear:both; text-align: center }
+			.label-footer { clear:both; text-align: center; font-weight: bold; font-size: 12pt; }
+			@media print { .controls { display: none; } }
 		</style>
 		<?php
 		if(isset($targetLabelFormatArr['defaultCss']) && $targetLabelFormatArr['defaultCss']){
@@ -128,6 +122,11 @@ if($SYMB_UID){
 			echo '<link href="'.$cssPath.'" type="text/css" rel="stylesheet" />'."\n";
 		}
 		?>
+		<style>
+			<?php
+			if(isset($targetLabelFormatArr['customStyles'])) echo $targetLabelFormatArr['customStyles'];
+			?>
+		</style>
 	</head>
 	<body style="background-color:#ffffff;">
 		<?php
@@ -157,17 +156,17 @@ if($SYMB_UID){
 					$headerStr = '';
 					if($hPrefix || $midStr || $hSuffix){
 						$headerStrArr = array();
-						$headerStrArr[] = trim($hPrefix);
+						$headerStrArr[] = $hPrefix;
 						$headerStrArr[] = trim($midStr);
-						$headerStrArr[] = trim($hSuffix);
-						$headerStr = implode(" ",$headerStrArr);
+						$headerStrArr[] = $hSuffix;
+						$headerStr = implode("",$headerStrArr);
 					}
 
 					$dupCnt = $_POST['q-'.$occid];
 					for($i = 0;$i < $dupCnt;$i++){
 						$labelCnt++;
 						if($columnCount == 'packet'){
-							echo '<div class="foldMarks1"><span style="float:left;">+</span><span style="float:right;">+</span></div>';
+							echo '<div class="page"><div class="foldMarks1"><span style="float:left;">+</span><span style="float:right;">+</span></div>';
 							echo '<div class="foldMarks2"><span style="float:left;">+</span><span style="float:right;">+</span></div>';
 						}
 						elseif($labelCnt%$columnCount == 1){
@@ -213,7 +212,7 @@ if($SYMB_UID){
 								<?php
 							}
 						}
-						if($lFooter) echo '<div class="label-footer" '.(isset($targetLabelFormatArr['labelFooter']['style'])?'style="'.$targetLabelFormatArr['labelFooter']['style'].'"':'').'>'.$lFooter.'</div>';
+						if($lFooter) echo '<div class="label-footer'.(isset($targetLabelFormatArr['labelFooter']['className'])?' '.$targetLabelFormatArr['labelFooter']['className']:'').'" '.(isset($targetLabelFormatArr['labelFooter']['style'])?'style="'.$targetLabelFormatArr['labelFooter']['style'].'"':'').'>'.$lFooter.'</div>';
 						if($useSymbBarcode){
 							?>
 							<hr style="border:dashed;" />
@@ -228,6 +227,9 @@ if($SYMB_UID){
 								</div>
 								<?php
 							}
+						}
+						if($columnCount == 'packet'){
+							echo '</div>';
 						}
 						echo '</div>';
 					}
@@ -245,14 +247,14 @@ if($SYMB_UID){
 		echo '</div>';
 		?>
 	</body>
-  <?php
-  if(isset($targetLabelFormatArr['customJS']) && $targetLabelFormatArr['customJS']){
-    $jsPath = $targetLabelFormatArr['customJS'];
-    if(substr($jsPath,0,1) == '/' && !file_exists($jsPath)){
-      if(file_exists($SERVER_ROOT.$targetLabelFormatArr['customJS'])) $jsPath = $CLIENT_ROOT.$targetLabelFormatArr['customJS'];
-    }
-    echo '<script src="'.$jsPath.'"></script>'."\n";
-  }
-  ?>
-  <script src="../../js/symb/collections.labeldynamic.js"></script>
+	<?php
+	if(isset($targetLabelFormatArr['customJS']) && $targetLabelFormatArr['customJS']){
+		$jsPath = $targetLabelFormatArr['customJS'];
+		if(substr($jsPath,0,1) == '/' && !file_exists($jsPath)){
+			if(file_exists($SERVER_ROOT.$targetLabelFormatArr['customJS'])) $jsPath = $CLIENT_ROOT.$targetLabelFormatArr['customJS'];
+		}
+		echo '<script src="'.$jsPath.'"></script>'."\n";
+	}
+	?>
+	<script src="../../js/symb/collections.labeldynamic.js"></script>
 </html>

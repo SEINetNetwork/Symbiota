@@ -25,11 +25,12 @@ class SpecProcessorManager {
 	protected $tnPixWidth = '';
 	protected $lgPixWidth = '';
 	protected $jpgQuality = 80;
-	protected $webMaxFileSize = 300000;
-	protected $lgMaxFileSize = 3000000;
+	protected $webMaxFileSize = 500000;
+	protected $lgMaxFileSize = 10000000;
 	protected $webImg = 1;
 	protected $createTnImg = 1;
 	protected $createLgImg = 2;
+	protected $customStoredProcedure;
 	protected $lastRunDate = '';
 
 	protected $dbMetadata = 1;			//Only used when run as a standalone script
@@ -210,6 +211,13 @@ class SpecProcessorManager {
 			}
 			$rs->free();
 
+			//Temporary code until customStoredProcedure field is offically integrated into specprocessorprojects table
+			$sql = 'SELECT customStoredProcedure FROM specprocessorprojects '.$sqlWhere;
+			if($rs = $this->conn->query($sql)){
+				if($r = $rs->fetch_object()) $this->customStoredProcedure = $r->customStoredProcedure;
+				$rs->free();
+			}
+
 			//if(!$this->targetPath) $this->targetPath = $GLOBALS['imageRootPath'];
 			//if(!$this->imgUrlBase) $this->imgUrlBase = $GLOBALS['imageRootUrl'];
 			if($this->sourcePath && substr($this->sourcePath,-1) != '/' && substr($this->sourcePath,-1) != '\\') $this->sourcePath .= '/';
@@ -236,16 +244,10 @@ class SpecProcessorManager {
 		//Count of specimens with images but no OCR
 		$cnt = 0;
 		if($this->collid){
-			$sql = 'SELECT COUNT(DISTINCT o.occid) AS cnt '.
-				'FROM omoccurrences o INNER JOIN images i ON o.occid = i.occid '.
-				'WHERE (o.collid = '.$this->collid.') ';
+			$sql = 'SELECT COUNT(DISTINCT o.occid) AS cnt FROM omoccurrences o INNER JOIN images i ON o.occid = i.occid WHERE (o.collid = '.$this->collid.') ';
 			if($procStatus){
-				if($procStatus == 'null'){
-					$sql .= 'AND processingstatus IS NULL';
-				}
-				else{
-					$sql .= 'AND processingstatus = "'.$this->cleanInStr($procStatus).'"';
-				}
+				if($procStatus == 'null') $sql .= 'AND processingstatus IS NULL';
+				else $sql .= 'AND processingstatus = "'.$this->cleanInStr($procStatus).'"';
 			}
 			$rs = $this->conn->query($sql);
 			while($r = $rs->fetch_object()){
@@ -445,9 +447,7 @@ class SpecProcessorManager {
 		}
 		$rs->free();
 
-		$sql = 'SELECT DISTINCT u.uid, CONCAT(CONCAT_WS(", ",u.lastname, u.firstname)," (",l.username,")") AS username '.
-			'FROM users u INNER JOIN userlogin l ON u.uid = l.uid '.
-			'WHERE (u.uid IN('.implode(',', array_keys($retArr)).')) ';
+		$sql = 'SELECT DISTINCT uid, CONCAT(CONCAT_WS(", ", lastname, firstname)," (", username,")") AS username FROM users WHERE (uid IN('.implode(',', array_keys($retArr)).')) ';
 		$rs = $this->conn->query($sql);
 		while($r = $rs->fetch_object()){
 			$retArr[$r->uid] = $r->username;
@@ -491,7 +491,7 @@ class SpecProcessorManager {
 			$sql .= ', COUNT(DISTINCT CASE WHEN e.editType = 0 THEN o.occid ELSE NULL END) as cntexcbatch ';
 		}
 		$sql .= 'FROM omoccurrences o INNER JOIN omoccuredits e ON o.occid = e.occid '.
-			'INNER JOIN userlogin u ON e.uid = u.uid '.
+			'INNER JOIN users u ON e.uid = u.uid '.
 			'WHERE (o.collid = '.$this->collid.') ';
 		if($startDate && $endDate){
 			$sql .= 'AND (e.initialtimestamp BETWEEN "'.$startDate.'" AND "'.$endDate.'") ';
@@ -578,18 +578,20 @@ class SpecProcessorManager {
 	public function getLogListing(){
 		$retArr = array();
 		if($this->collid){
-			$logPathFrag = ($this->projectType == 'local'?'imgProccessing':$this->projectType).'/';
-			if(file_exists($this->logPath.$logPathFrag)){
-				if($fh = opendir($this->logPath.$logPathFrag)){
-					while($fileName = readdir($fh)){
-						if(strpos($fileName,$this->collid.'_') === 0){
-							$retArr[] = $fileName;
+			$dirArr = array('imgProccessing','cyverse','iplant','processing/imgmap');
+			foreach($dirArr as $dirPath){
+				if(file_exists($this->logPath.$dirPath)){
+					if($fh = opendir($this->logPath.$dirPath)){
+						while($fileName = readdir($fh)){
+							if(strpos($fileName,$this->collid.'_') === 0){
+								$retArr[$dirPath][] = $fileName;
+							}
 						}
+						if(isset($retArr[$dirPath])) rsort($retArr[$dirPath]);
 					}
 				}
 			}
 		}
-		rsort($retArr);
 		return $retArr;
 	}
 
@@ -795,6 +797,14 @@ class SpecProcessorManager {
 
 	public function getCreateLgImg(){
 		return $this->createLgImg;
+	}
+
+	public function setCustomStoredProcedure($c){
+		$this->customStoredProcedure = $c;
+	}
+
+	public function getCustomStoredProcedure(){
+		return $this->customStoredProcedure;
 	}
 
 	public function setLastRunDate($date){

@@ -55,7 +55,7 @@ body{
 #dupeMsgDiv{
 	position: absolute;
 	top: 78px;
-	left: 617px;
+	left: 615px;
 	display:none;
 	background-color: lightgrey;
 	z-index: 10; 
@@ -64,7 +64,7 @@ body{
 }
 
 #dupeMsgDiv div{
-	width:150px;
+	width:170px;
 	border:2px outset blue;
 	background-color: white;
 	padding:3px;
@@ -96,7 +96,7 @@ body{
 }
 
 #catalogNumberDiv input{
-	width:	120px;
+	width:	150px;
 }
 
 #otherCatalogNumbersDiv {
@@ -104,7 +104,7 @@ body{
 }
 
 #otherCatalogNumbersDiv input{
-	width:	110px;
+	width:	200px;
 }
 
 #recordedByDiv {
@@ -419,16 +419,16 @@ body{
 #dmsAidDiv{
 	 float:	left;
 	 padding:	15px 10px;
-	 background-color: lightyellow;
-	 border: 1px solid yellow;
+	 background-color: #f2f2f2;
+	 border: 2px outset #E8EEFA;
 	 width:	260px;
 }
 
 #utmAidDiv{
 	 float:	left;
 	 padding:	15px 10px;
-	 background-color:	lightyellow;
-	 border:1px solid yellow;
+	 background-color: #f2f2f2;
+	 border: 2px outset #E8EEFA;
 	 width:150px;
 	 margin-bottom:10px;
 }
@@ -436,8 +436,8 @@ body{
 #trsAidDiv{
 	float:	left;
 	padding:15px 10px;
-	background-color:lightyellow;
-	border:	1px solid yellow;
+	 background-color: #f2f2f2;
+	 border: 2px outset #E8EEFA;
 }
 
 #geodeticDatumDiv{
@@ -618,7 +618,6 @@ body{
 
 #dynamicPropertiesDiv{
 	padding: 2px;
-	display: none;
 	clear: both;
 }
 
@@ -870,3 +869,11 @@ table {
 	font-family: 	Arial, Helvetica, sans-serif; 
 	font-size: 		12px;
 }
+
+.divTable{ display: table; }
+.divTableRow { display: table-row; }
+.divTableHeading { display: table-header-group;}
+.divTableCell, .divTableHead { display: table-cell;}
+.divTableHeading { display: table-header-group;}
+.divTableFoot { display: table-footer-group;}
+.divTableBody { display: table-row-group;}

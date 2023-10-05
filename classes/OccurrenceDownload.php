@@ -27,7 +27,7 @@ class OccurrenceDownload{
 		$this->securityArr = Array('locality','locationRemarks','minimumElevationInMeters','maximumElevationInMeters','verbatimElevation',
 			'decimalLatitude','decimalLongitude','geodeticDatum','coordinateUncertaintyInMeters','footprintWKT','verbatimCoordinates',
 			'georeferenceRemarks','georeferencedBy','georeferenceProtocol','georeferenceSources','georeferenceVerificationStatus','habitat');
-		if($GLOBALS['IS_ADMIN'] || array_key_exists("CollAdmin", $GLOBALS['USER_RIGHTS']) || array_key_exists("RareSppAdmin", $GLOBALS['USER_RIGHTS']) || array_key_exists("RareSppReadAll", $GLOBALS['USER_RIGHTS'])){
+		if($GLOBALS['IS_ADMIN'] || array_key_exists('CollAdmin', $GLOBALS['USER_RIGHTS']) || array_key_exists('RareSppAdmin', $GLOBALS['USER_RIGHTS']) || array_key_exists('RareSppReadAll', $GLOBALS['USER_RIGHTS'])){
 			$this->redactLocalities = false;
 		}
 		if(array_key_exists('CollEditor', $GLOBALS['USER_RIGHTS'])){
@@ -48,8 +48,6 @@ class OccurrenceDownload{
 	}
 
 	public function downloadData(){
-		$archiveFile = '';
-		$outstream = null;
 		$contentDesc = '';
 		$filePath = $this->getOutputFilePath();
 		$fileName = $this->getOutputFileName();
@@ -105,7 +103,7 @@ class OccurrenceDownload{
 			}
 		}
 		else{
-			//Create regular file and then sreamed out to user
+			//Create regular file and then streamed out to user
 			$fh = fopen($filePath.$fileName, "w");
 			$this->writeOutData($fh);
 			fclose($fh);
@@ -133,6 +131,7 @@ class OccurrenceDownload{
 			$result = $this->conn->query($sql,MYSQLI_USE_RESULT);
 			if($result){
 				$statsManager = new OccurrenceAccessStats();
+				$occurAccessID = $statsManager->insertAccessEvent('download', substr($sql, strpos($sql, 'WHERE ')));
 				$outputHeader = true;
 				while($row = $result->fetch_assoc()){
 					if($outputHeader){
@@ -155,7 +154,7 @@ class OccurrenceDownload{
 					}
 					//Set access statistics
 					if($this->isPublicDownload){
-						if($this->schemaType != 'checklist') if(array_key_exists('occid',$row)) $statsManager->recordAccessEvent($row['occid'], 'download');
+						if($this->schemaType != 'checklist') if(array_key_exists('occid',$row)) $statsManager->insertAccessOccurrence($occurAccessID, $row['occid']);
 					}
 					$recCnt++;
 				}
@@ -295,15 +294,14 @@ class OccurrenceDownload{
 		$languageElem = $newDoc->createElement('language','en-us');
 		$channelElem->appendChild($languageElem);
 		//Create new item for target archives and load into array
-		$sql = 'SELECT o.occid, CONCAT_WS("-",c.institutioncode, c.collectioncode) as instcode, c.collectionname, g.guid, c.guidtarget, '.
-				'o.occurrenceid, o.catalognumber, o.sciname, o.recordedby, o.recordnumber, IFNULL(CAST(o.eventdate AS CHAR),o.verbatimeventdate) as eventdate, '.
-				'o.decimallatitude, o.decimallongitude, o.datelastmodified, o.recordenteredby, o.genericcolumn2, '.
-				'IFNULL(i.thumbnailurl,i.url) AS thumbnailurl, o.processingstatus '.
-				'FROM omoccurrences o LEFT JOIN omcollections c ON o.collid = c.collid '.
-				'INNER JOIN images i ON o.occid = i.occid '.
-				'INNER JOIN guidoccurrences g ON o.occid = g.occid '.
-				'WHERE c.colltype = "Preserved Specimens" '.
-				'AND o.processingstatus IN("pending review","reviewed", "closed") AND (o.localitysecurity IS NULL OR o.localitysecurity = 0) ';
+		$sql = 'SELECT o.occid, CONCAT_WS("-",c.institutioncode, c.collectioncode) as instcode, c.collectionname, o.recordID, c.guidtarget, '.
+			'o.occurrenceid, o.catalognumber, o.sciname, o.recordedby, o.recordnumber, IFNULL(CAST(o.eventdate AS CHAR),o.verbatimeventdate) as eventdate, '.
+			'o.decimallatitude, o.decimallongitude, o.datelastmodified, o.recordenteredby, o.genericcolumn2, '.
+			'IFNULL(i.thumbnailurl,i.url) AS thumbnailurl, o.processingstatus '.
+			'FROM omoccurrences o LEFT JOIN omcollections c ON o.collid = c.collid '.
+			'INNER JOIN images i ON o.occid = i.occid '.
+			'WHERE c.colltype = "Preserved Specimens" '.
+			'AND o.processingstatus IN("pending review","reviewed", "closed") AND (o.localitysecurity IS NULL OR o.localitysecurity = 0) ';
 		if($days && is_numeric($days)) $sql .= 'AND (o.datelastmodified > DATE_SUB(NOW(), INTERVAL '.$days.' DAY)) ';
 		$sql .= 'ORDER BY o.datelastmodified DESC ';
 		if(!$days && !$limit) $limit = '100';
@@ -324,7 +322,7 @@ class OccurrenceDownload{
 			$itemElem->appendChild($catalogLinkElem);
 
 			if($r->guidtarget){
-				$occID = $r->guid;
+				$occID = $r->recordID;
 				if($r->guidtarget == 'occurrenceId'){
 					$occID = $r->occurrenceid;
 				}
@@ -394,46 +392,13 @@ class OccurrenceDownload{
 			foreach($this->conditionArr as $field => $condArr){
 				$sqlFrag2 = '';
 				foreach($condArr as $cond => $valueArr){
-					if($cond == 'NULL'){
-						$sqlFrag2 .= 'OR o.'.$field.' IS NULL ';
-					}
-					elseif($cond == 'NOTNULL'){
-						$sqlFrag2 .= 'OR o.'.$field.' IS NOT NULL ';
-					}
-					elseif($cond == 'EQUALS'){
-						$sqlFrag2 .= 'OR o.'.$field.' IN("'.implode('","',$valueArr).'") ';
-					}
-					elseif($cond == 'NOTEQUALS'){
-						$sqlFrag2 .= 'OR o.'.$field.' NOT IN("'.implode('","',$valueArr).'") ';
-					}
-					else{
-						foreach($valueArr as $value){
-							if($cond == 'STARTS'){
-								$sqlFrag2 .= 'OR o.'.$field.' LIKE "'.$value.'%" ';
-							}
-							elseif($cond == 'LIKE'){
-								$sqlFrag2 .= 'OR o.'.$field.' LIKE "%'.$value.'%" ';
-							}
-							elseif($cond == 'NOTLIKE'){
-								$sqlFrag2 .= 'OR o.'.$field.' NOT LIKE "%'.$value.'%" ';
-							}
-							elseif($cond == 'LESSTHAN'){
-								$sqlFrag2 .= 'OR o.'.$field.' < "'.$value.'" ';
-							}
-							elseif($cond == 'GREATERTHAN'){
-								$sqlFrag2 .= 'OR o.'.$field.' > "'.$value.'" ';
-							}
-						}
-					}
+					$sqlFrag2 .= $this->getSqlFragment($field, $cond, $valueArr);
 				}
 				$sqlFrag .= 'AND ('.substr($sqlFrag2,3).') ';
 			}
 
 		}
-		//Build where
-		if($sqlFrag){
-			$this->sqlWhere .= $sqlFrag;
-		}
+		if($sqlFrag) $this->sqlWhere .= $sqlFrag;
 		if($this->sqlWhere){
 			//Make sure it starts with WHERE
 			if(substr($this->sqlWhere,0,4) == 'AND '){
@@ -443,6 +408,42 @@ class OccurrenceDownload{
 				$this->sqlWhere = 'WHERE '.$this->sqlWhere;
 			}
 		}
+	}
+
+	private function getSqlFragment($field, $cond, $valueArr){
+		$sqlFrag = '';
+		if($cond == 'NULL'){
+			$sqlFrag .= 'OR o.'.$field.' IS NULL ';
+		}
+		elseif($cond == 'NOTNULL'){
+			$sqlFrag .= 'OR o.'.$field.' IS NOT NULL ';
+		}
+		elseif($cond == 'EQUALS'){
+			$sqlFrag .= 'OR o.'.$field.' IN("'.implode('","',$valueArr).'") ';
+		}
+		elseif($cond == 'NOTEQUALS'){
+			$sqlFrag .= 'OR o.'.$field.' NOT IN("'.implode('","',$valueArr).'") OR o.'.$field.' IS NULL ';
+		}
+		else{
+			foreach($valueArr as $value){
+				if($cond == 'STARTS'){
+					$sqlFrag .= 'OR o.'.$field.' LIKE "'.$value.'%" ';
+				}
+				elseif($cond == 'LIKE'){
+					$sqlFrag .= 'OR o.'.$field.' LIKE "%'.$value.'%" ';
+				}
+				elseif($cond == 'NOTLIKE'){
+					$sqlFrag .= 'OR o.'.$field.' NOT LIKE "%'.$value.'%" OR o.'.$field.' IS NULL ';
+				}
+				elseif($cond == 'LESSTHAN'){
+					$sqlFrag .= 'OR o.'.$field.' < "'.$value.'" ';
+				}
+				elseif($cond == 'GREATERTHAN'){
+					$sqlFrag .= 'OR o.'.$field.' > "'.$value.'" ';
+				}
+			}
+		}
+		return $sqlFrag;
 	}
 
 	private function getSql(){
@@ -468,7 +469,7 @@ class OccurrenceDownload{
 			else{
 				$sql = 'SELECT DISTINCT IFNULL(o.family,"not entered") AS family, o.sciname, CONCAT_WS(" ",t.unitind1,t.unitname1) AS genus, '.
 					'CONCAT_WS(" ",t.unitind2,t.unitname2) AS specificEpithet, t.unitind3 AS taxonRank, t.unitname3 AS infraSpecificEpithet, t.author AS scientificNameAuthorship '.
-					'FROM omoccurrences o LEFT JOIN taxa t ON o.tidinterpreted = t.tid ';
+					'FROM omoccurrences o LEFT JOIN taxa t ON o.tidinterpreted = t.tid LEFT JOIN taxstatus ts ON t.tid = ts.tid ';
 				$sql .= $this->setTableJoins($this->sqlWhere);
 				$sql .= $this->sqlWhere.'AND o.SciName NOT LIKE "%aceae" AND o.SciName NOT LIKE "%idea" AND o.SciName NOT IN ("Plantae","Polypodiophyta") ';
 				if($this->redactLocalities){
@@ -479,7 +480,7 @@ class OccurrenceDownload{
 						$sql .= 'AND (o.localitySecurity = 0 OR o.localitySecurity IS NULL) ';
 					}
 				}
-				$sql .= 'ORDER BY IFNULL(o.family,"not entered"), o.SciName ';
+				$sql .= 'ORDER BY IFNULL(IFNULL(ts.family, o.family),"not entered"), o.SciName ';
 			}
 		}
 		elseif($this->schemaType == 'georef'){
@@ -490,17 +491,14 @@ class OccurrenceDownload{
 				$sql .= 'o.georeferencedBy, o.georeferenceProtocol, o.georeferenceSources, o.georeferenceVerificationStatus, '.
 					'o.georeferenceRemarks, o.minimumElevationInMeters, o.maximumElevationInMeters, o.verbatimElevation, '.
 					'o.localitySecurity, o.localitySecurityReason, IFNULL(o.modified,o.datelastmodified) AS modified, '.
-					'o.processingStatus, o.collId, o.dbpk AS sourcePrimaryKey, o.occid, CONCAT("urn:uuid:",g.guid) AS recordId ';
+					'o.processingStatus, o.collId, o.dbpk AS sourcePrimaryKey, o.occid, CONCAT("urn:uuid:", o.recordID) AS recordID ';
 			}
 			else{
 				$sql .= 'o.georeferenceProtocol, o.georeferenceSources, o.georeferenceVerificationStatus, '.
 					'o.georeferenceRemarks, o.minimumElevationInMeters, o.maximumElevationInMeters, o.verbatimElevation, '.
-					'IFNULL(o.modified,o.datelastmodified) AS modified, o.occid, CONCAT("urn:uuid:",g.guid) AS recordId ';
+					'IFNULL(o.modified,o.datelastmodified) AS modified, o.occid, CONCAT("urn:uuid:", o.recordID) AS recordID ';
 			}
-
-			$sql .= 'FROM omcollections c INNER JOIN omoccurrences o ON c.collid = o.collid '.
-				'LEFT JOIN guidoccurrences g ON o.occid = g.occid '.
-				'LEFT JOIN taxa t ON o.tidinterpreted = t.tid ';
+			$sql .= 'FROM omcollections c INNER JOIN omoccurrences o ON c.collid = o.collid LEFT JOIN taxa t ON o.tidinterpreted = t.tid ';
 			$sql .= $this->setTableJoins($this->sqlWhere);
 			$this->applyConditions();
 			$sql .= $this->sqlWhere;
@@ -512,7 +510,7 @@ class OccurrenceDownload{
 					$sql .= 'AND (o.localitySecurity = 0 OR o.localitySecurity IS NULL) ';
 				}
 			}
-			$sql .= "ORDER BY o.collid";
+			$sql .= 'ORDER BY o.collid';
 		}
 		//echo $sql; exit;
 		return $sql;
@@ -521,7 +519,7 @@ class OccurrenceDownload{
 	private function setTableJoins($sqlWhere){
 		$sqlJoin = '';
 		if(strpos($sqlWhere,'e.taxauthid')) $sqlJoin .= 'INNER JOIN taxaenumtree e ON o.tidinterpreted = e.tid ';
-		if(strpos($sqlWhere,'v.clid')) $sqlJoin .= 'INNER JOIN fmvouchers v ON o.occid = v.occid ';
+		if(strpos($sqlWhere,'ctl.clid')) $sqlJoin .= 'INNER JOIN fmvouchers v ON o.occid = v.occid INNER JOIN fmchklsttaxalink ctl ON v.clTaxaID = ctl.clTaxaID ';
 		if(strpos($sqlWhere,'p.point')) $sqlJoin .= 'INNER JOIN omoccurpoints p ON o.occid = p.occid ';
 		if(strpos($sqlWhere,'MATCH(f.recordedby)') || strpos($sqlWhere,'MATCH(f.locality)')){
 			$sqlJoin .= 'INNER JOIN omoccurrencesfulltext f ON o.occid = f.occid ';
@@ -635,6 +633,19 @@ class OccurrenceDownload{
 		}
 		$rs->free();
 		return $retArr;
+	}
+
+	public function hasMaterialSamples($collid = 0){
+		$bool = false;
+		$sql = 'SELECT occid FROM ommaterialsample LIMIT 1';
+		if($collid && is_numeric($collid)){
+			$sql .= 'SELECT o.occid FROM ommaterialsample m INNER JOIN omoccurrences o ON m.occid = o.occid WHERE (o.collid = '.$collid.') LIMIT 1';
+		}
+		if($rs = $this->conn->query($sql)){
+			if($rs->num_rows) $bool = true;
+			$rs->free();
+		}
+		return $bool;
 	}
 
 	//General setter, getters, and other configurations
