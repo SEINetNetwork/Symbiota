@@ -10,8 +10,9 @@ header("Content-Type: text/html; charset=".$CHARSET);
 		include_once($SERVER_ROOT.'/includes/head.php');
 		?>
 	</head>
-	<body style="background-color:#FFFFFF">
-		<?php
+	<body>
+		<table id="maintable">
+			<?php
 		$displayLeftMenu = false;
 		include($SERVER_ROOT.'/includes/header.php');
 		?>
@@ -19,11 +20,11 @@ header("Content-Type: text/html; charset=".$CHARSET);
 			<a href="../index.php"><?php echo (isset($LANG['HOME'])?$LANG['HOME']:'Home'); ?></a> &gt;
 			<b><?php echo (isset($LANG['ABOUT_PROJECT'])?$LANG['ABOUT_PROJECT']:'MSBG > About the Project'); ?></b>
 		</div>
-		<h1>
+		<h1> 
 		<img src="<?php echo $CLIENT_ROOT; ?>/images/layout/Sarasota_Ecoflora_Final.png" style="float:left;height:150px;margin:10px">
 		Sarasota-Manatee EcoFlora<h1>
-		<h2><span style="font-weight:normal;">The Sarasota-Manatee EcoFlora project is based at the Marie Selby Botanical Gardens, and is focused on the flora of Sarasota and Manatee counties, Florida.</span></h2>
-		<h3 style="clear:left;text-align:center;"><a href="https://www.inaturalist.org/projects/sarasota-manatee-ecoflora-project-fl-usa">View our project on iNaturalist</a></h3>
+		<h2><span style="font-weight:normal;">The Sarasota-Manatee EcoFlora project was based at the Marie Selby Botanical Gardens, and is focused on the flora of Sarasota and Manatee counties, Florida.</span></h2>
+		<h3 style="clear:left;text-align:center;"><a href="https://www.inaturalist.org/projects/sarasota-manatee-ecoflora-project-fl-usa">View project on iNaturalist</a></h3>
 		<h3 style="text-align:center;"> More information here: <a href="https://selby.org/dsc/youth-family-programs/sarasota-manatee-ecoflora-project">selby.org/dsc/youth-family-programs/sarasota-manatee-ecoflora-project</a></h3>	
 		<?php
 		include($SERVER_ROOT.'/includes/footer.php');
