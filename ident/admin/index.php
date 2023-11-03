@@ -23,16 +23,9 @@ if($IS_ADMIN || array_key_exists("KeyAdmin",$USER_RIGHTS)){
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=<?php echo $CHARSET;?>">
 	<title>Character Admin</title>
-  <?php
-      $activateJQuery = false;
-      if(file_exists($SERVER_ROOT.'/includes/head.php')){
-        include_once($SERVER_ROOT.'/includes/head.php');
-      }
-      else{
-        echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-      }
+	<?php
+
+	include_once($SERVER_ROOT.'/includes/head.php');
 	?>
 	<script type="text/javascript" src="../../js/symb/shared.js"></script>
 	<script type="text/javascript">
@@ -106,9 +99,9 @@ if($IS_ADMIN || array_key_exists("KeyAdmin",$USER_RIGHTS)){
 									</select>
 								</div>
 								<div style="margin-left:30px;float:left;">
-									Heading:<br />
-									<select name="hid" style="width:125px;">
-										<option value="">No Heading</option>
+									Grouping:<br />
+									<select name="hid" style="max-width:300px;">
+										<option value="">Not Assigned</option>
 										<option value="">---------------------</option>
 										<?php
 										$hArr = $headingArr;
@@ -135,7 +128,7 @@ if($IS_ADMIN || array_key_exists("KeyAdmin",$USER_RIGHTS)){
 					<?php
 					if($charArr){
 						?>
-						<h3>Characters by Heading</h3>
+						<h3>Characters</h3>
 						<ul>
 							<?php
 							foreach($headingArr as $hid => $hArr){
@@ -148,9 +141,7 @@ if($IS_ADMIN || array_key_exists("KeyAdmin",$USER_RIGHTS)){
 												<?php
 												$charList = $charArr[$hid];
 												foreach($charList as $cid => $charName){
-													echo '<li>';
-													echo '<a href="chardetails.php?cid='.$cid.'">'.$charName.'</a>';
-													echo '</li>';
+													echo '<li><a href="chardetails.php?cid='.$cid.'">'.$charName.'</a></li>';
 												}
 												?>
 											</ul>
@@ -163,14 +154,12 @@ if($IS_ADMIN || array_key_exists("KeyAdmin",$USER_RIGHTS)){
 								$noHeaderArr = $charArr[0];
 								?>
 								<li>
-									<a href="#" onclick="toggle('char-0');return false;"><b>No Assigned Header</b></a>
+									<a href="#" onclick="toggle('char-0');return false;"><b>No Assigned Grouping</b></a>
 									<div id="char-0" style="display:block;">
 										<ul>
 											<?php
 											foreach($noHeaderArr as $cid => $charName){
-												echo '<li>';
-												echo '<a href="chardetails.php?cid='.$cid.'">'.$charName.'</a>';
-												echo '</li>';
+												echo '<li><a href="chardetails.php?cid='.$cid.'">'.$charName.'</a></li>';
 											}
 											?>
 										</ul>

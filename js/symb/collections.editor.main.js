@@ -1,7 +1,5 @@
-var pauseSubmit = false;
 var imgAssocCleared = false;
 var voucherAssocCleared = false;
-var abortFormVerification = false;
 
 $(document).ready(function() {
 	
@@ -17,7 +15,14 @@ $(document).ready(function() {
 		var ffversion=new Number(RegExp.$1);
 		if(ffversion < 7 ) alert("You are using an older version of Firefox. For best results, we recommend that you update your browser.");
 	}
-
+	
+	$("form#fullform :input").on('input', function() {
+		var skipFields = ["carryover","assocrelation","targetcollid","clonecount"];
+		if(jQuery.inArray( $(this).attr('name'), skipFields ) == -1){
+			$("button").prop("disabled",false);
+		}
+	});
+	
 	$("#occedittabs").tabs({
 		select: function(event, ui) {
 			if(verifyLeaveForm()){
@@ -137,6 +142,7 @@ $(document).ready(function() {
 						fieldChanged(k);
 					}
 				});
+				ui.item.value = ui.item.locality; 
 			}
 		});
 		if($( "input[name=localautodeactivated]" ).is(':checked')){
@@ -157,6 +163,7 @@ $(document).ready(function() {
 		},
 		minLength: 3,
 		select: function( event, ui ) {
+			event.preventDefault();
 			$.each(ui.item, function(k, v) {
 				var elem = $( "input[name="+k+"]" );
 				if(!elem.length) elem = $( "textarea[name="+k+"]" );
@@ -166,6 +173,9 @@ $(document).ready(function() {
 					fieldChanged(k);
 				}
 			});
+			let baseValue = ui.item.value;
+			baseValue = baseValue.substring(0,baseValue.indexOf(" || "));
+			this.value = baseValue;
 		}
 	});
 
@@ -216,7 +226,7 @@ $(document).ready(function() {
 	
 	$("textarea[name=associatedtaxa]").autocomplete({
 		source: function( request, response ) {
-			$.getJSON( "rpc/getassocspp.php", { term: extractLast( request.term ) }, response );
+			$.getJSON( "rpc/getspeciessuggest.php", { term: extractLast( request.term ) }, response );
 		},
 		search: function() {
 			// custom minLength
@@ -241,7 +251,7 @@ $(document).ready(function() {
 
 	$("#catalognumber").keydown(function(evt){
 		var evt  = (evt) ? evt : ((event) ? event : null);
-		if ((evt.keyCode == 13)) { return false; }
+		if(evt.keyCode == 13) return false;
 	});
 	
 	if(document.getElementById('hostDiv')){
@@ -267,12 +277,6 @@ $(document).ready(function() {
 	//Remember Auto Duplicate search status 
 	if(getCookie("autodupe") == 1) editForm.autodupe.checked = true; 
 });
-
-function toggleQueryForm(){
-	toggle("querydiv");
-	var statusDiv = document.getElementById('statusdiv');
-	if(statusDiv) statusDiv.style.display = 'none';
-}
 
 //Field changed and verification functions
 function verifyFullFormSciName(){
@@ -313,6 +317,28 @@ function verifyFullFormSciName(){
 	});
 }
 
+function addIdentifierField(clickedObj){
+	$(clickedObj).hide();
+	var identDiv = document.getElementById("identifierBody");
+	var insertHtml = '<div class="divTableRow"><div class="divTableCell"><input name="idkey[]" type="hidden" value="newidentifier" /><input name="idname[]" type="text" value="" onchange="fieldChanged(\'idname\');" autocomplete="off" /></div><div class="divTableCell"><input name="idvalue[]" type="text" value="" onchange="fieldChanged(\'idvalue\');searchOtherCatalogNumbers(this.form);" autocomplete="off" /><a href="#" onclick="addIdentifierField(this);return false"><img src="../../images/plus.png" /></a></div></div>';
+	identDiv.insertAdjacentHTML('beforeend', insertHtml);
+}
+
+function deleteIdentifier(identID, occid){
+	if(identID != ""){
+		//alert("rpc/deleteIdentifier.php?identifierID="+identID+"&occid="+occid);
+		$.ajax({
+			type: "POST",
+			url: "rpc/deleteIdentifier.php",
+			dataType: "json",
+			data: { identifierID: identID, occid: occid }
+		}).done(function( response ) {
+			if(response == 1) $("#idRow-"+identID).remove()
+			//else alert("Error deleting identifier");
+		});
+	}
+}
+
 function localitySecurityCheck(){
 	var tidIn = $( "input[name=tidinterpreted]" ).val();
 	var stateIn = $( "input[name=stateprovince]" ).val();
@@ -349,7 +375,6 @@ function fieldChanged(fieldName){
 	}
 	catch(ex){
 	}
-	document.fullform.submitaction.disabled = false;
 }
 
 function recordNumberChanged(){
@@ -373,7 +398,7 @@ function decimalLatitudeChanged(f){
 
 function decimalLongitudeChanged(f){
 	verifyDecimalLongitude(f);
-	verifyCoordinates(f);
+	//verifyCoordinates(f);
 	fieldChanged('decimallongitude');
 }
 
@@ -412,17 +437,16 @@ function verbatimElevationChanged(f){
 
 function parseVerbatimElevation(f){
 	if(f.verbatimelevation.value){
-		var min = "";
-		var max = "";
-		var verbElevStr = f.verbatimelevation.value;
+		let min = "";
+		let max = "";
+		let verbElevStr = f.verbatimelevation.value;
 		verbElevStr = verbElevStr.replace(/,/g ,"");
 		
-		var regEx1 = /(\d+)\s*-\s*(\d+)\s*[ft|feet|']/i; 
-		var regEx2 = /(\d+)\s*[ft|feet|']/i; 
-		var regEx3 = /(\d+)\s*-\s*(\d+)\s{0,1}m{1}/i; 
-		var regEx4 = /(\d+)\s{0,1}-\s{0,1}(\d+)\s{0,1}m{1}/i; 
-		var regEx5 = /(\d+)\s{0,1}m{1}/i; 
-		var extractStr = "";
+		let regEx1 = /([\d\.]+)\s*-\s*([\d\.]+)\s*[ft|feet|']/i; 
+		let regEx2 = /([\d\.]+)\s*[ft|feet|']/i; 
+		let regEx3 = /([\d\.]+)\s*-\s*([\d\.]+)\s{0,1}m{1}/i; 
+		let regEx4 = /([\d\.]+)\s{0,1}-\s{0,1}([\d\.]+)\s{0,1}m{1}/i; 
+		let regEx5 = /([\d\.]+)\s{0,1}m{1}/i; 
 		if(extractArr = regEx1.exec(verbElevStr)){
 			min = Math.round(extractArr[1]*.3048);
 			max = Math.round(extractArr[2]*.3048);
@@ -488,9 +512,9 @@ function parseVerbatimCoordinates(f,verbose){
 		var z = null;
 		var e = null;
 		var n = null;
-		var zoneEx = /^\D{0,1}(\d{1,2})\D*$/;
-		var eEx1 = /^(\d{6,7})E/i;
-		var nEx1 = /^(\d{7})N/i;
+		var zoneEx = /^\D{0,5}(\d{1,2}[A-Z]{0,1})\D*$/i;
+		var eEx1 = /^(\d{6,7})m{0,1}E/i;
+		var nEx1 = /^(\d{7})m{0,1}N/i;
 		var eEx2 = /^E(\d{6,7})\D*$/i;
 		var nEx2 = /^N(\d{4,7})\D*$/i;
 		var eEx3 = /^0{0,1}(\d{6})\D*$/i;
@@ -520,13 +544,12 @@ function parseVerbatimCoordinates(f,verbose){
 		}
 		
 		if(z && e && n){
-			var datum = f.geodeticdatum.value
-			var llStr = utm2LatLng(z, e, n, datum);
+			var llStr = utm2LatLng(z, e, n, f.geodeticdatum.value, null);
 			if(llStr){
 				var llArr = llStr.split(",");
 				if(llArr.length == 2){
-					latDec = Math.round(llArr[0]*1000000)/1000000;
-					lngDec = Math.round(llArr[1]*1000000)/1000000;
+					latDec = llArr[0];
+					lngDec = llArr[1];
 				}
 			}
 		}
@@ -677,10 +700,6 @@ function parseVerbatimCoordinates(f,verbose){
 
 //Form verification code
 function verifyFullForm(f){
-	f.submitaction.focus();
-	if(abortFormVerification) return true;
-
-	if(searchDupesCatalogNumber(f,false)) return false;
 	var validformat1 = /^\d{4}-[0]{1}[0-9]{1}-\d{1,2}$/; //Format: yyyy-mm-dd
 	var validformat2 = /^\d{4}-[1]{1}[0-2]{1}-\d{1,2}$/; //Format: yyyy-mm-dd
 	if(f.eventdate.value && !(validformat1.test(f.eventdate.value) || validformat2.test(f.eventdate.value))){
@@ -708,7 +727,7 @@ function verifyFullForm(f){
 		return false;
 	}
 	if(f.ometid && ((f.ometid.value != "" && f.exsnumber.value == "") || (f.ometid.value == "" && f.exsnumber.value != ""))){
-		alert("You must have both an exsiccati title and exsiccati number or neither");
+		alert("You must have both an exsiccati title and number, or neither. If there is no number, s.n. can be entered.");
 		return false;
 	}
 	if(!verifyDecimalLatitude(f)){
@@ -741,6 +760,7 @@ function verifyFullForm(f){
 		alert("Duplicate Quantity field must be numeric only");
 		return false;
 	}
+	if(searchCatalogNumber(f,false)) return false;
 	return true;
 }
 
@@ -759,10 +779,66 @@ function verifyFullFormEdits(f){
 	return true;
 }
 
-function verifyGotoNew(f){
-	abortFormVerification = true;
-	f.gotomode.value = 1;
-	f.submit();
+function prePopulateCatalogNumbers(){
+	$("#cloneCatalogNumber-Fieldset").show();
+	var catCnt = document.getElementById("clonecount").value;
+	if(catCnt == "" || !isNumeric(catCnt)) return false;
+	var cloneDiv = document.getElementById("cloneCatalogNumberDiv");
+	cloneDiv.innerHTML = "";
+	for(var i=0;i < catCnt;i++){
+		var newInput = document.createElement("input");
+		newInput.setAttribute("id", "clonecat-"+i);
+		newInput.setAttribute("name", "clonecatnum[]");
+		newInput.setAttribute("type", "text");
+		var newDiv = document.createElement("div");
+		var newText = document.createTextNode("Catalog Number "+(i+1)+": ");
+		newDiv.appendChild(newText);
+		newDiv.setAttribute("class", "fieldGroupDiv");
+		newDiv.appendChild(newInput);
+		if(i == 0){
+			var newImg = document.createElement("img");
+			newImg.setAttribute("src", "../../images/downarrow.png");
+			newImg.setAttribute("style", "width:12px");
+			var newAnchor = document.createElement("a");
+			newAnchor.setAttribute("href", "#");
+			newAnchor.setAttribute("onclick", "autoIncrementCat();return false");
+			newAnchor.appendChild(newImg);
+			newDiv.appendChild(newAnchor);
+		}
+		cloneDiv.appendChild(newDiv);
+	}
+	return false;
+}
+
+function autoIncrementCat(){
+	let catSeed = document.getElementById("clonecat-0").value;
+	if(catSeed != ""){
+		let prefix = '';
+		for(let h = 0; h < catSeed.length; h++) {
+			let c = catSeed.charAt(h);
+			if(c >= '0' && c <= '9') break;
+			else prefix = prefix + c;
+		}
+		let suffix = ''; 
+		for(let i = catSeed.length; i > 0; i--) {
+			let c = catSeed.charAt(i-1);
+			if(c >= '0' && c <= '9') break;
+			else suffix =  c+suffix;
+		}
+		let seed = catSeed.substring(prefix.length,(catSeed.length-suffix.length));
+		$("input[id^='clonecat']").each(function(){
+			let cnt = parseInt($(this).attr("id").substr(9));
+			if(cnt > 0){
+				let newNum = parseInt(seed)+cnt;
+				newNum = newNum.toString();
+				if(seed.substr(0,1) == "0"){
+					let numLength = seed.length;
+					while(newNum.length < numLength) newNum = "0" + newNum;
+				}
+				$(this).val(prefix+newNum+suffix);				
+			}
+		});
+	}
 }
 
 function verifyDecimalLatitude(f){
@@ -933,38 +1009,32 @@ function eventDateChanged(eventDateInput){
 			if(dateArr['y'] > 0) distributeEventDate(dateArr['y'],dateArr['m'],dateArr['d']);
 		}
 	}
+	else{
+		distributeEventDate("","","");
+	}
 	fieldChanged('eventdate');
-	var f = eventDateInput.form;
-	if(!eventDateInput.form.recordnumber.value && f.recordedby.value) autoDupeSearch();
+	if(!eventDateInput.form.recordnumber.value && eventDateInput.form.recordedby.value) autoDupeSearch();
 	return true;
 }
 
-function distributeEventDate(y,m,d){
+function distributeEventDate(y, m, d){
 	var f = document.fullform;
-	if(y != "0000"){
-		f.year.value = y;
-		fieldChanged("year");
-	}
-	if(m == "00"){
-		f.month.value = "";
-	}
-	else{
-		f.month.value = m;
-		fieldChanged("year");
-	}
-	if(d == "00"){
-		f.day.value = "";
-	}
-	else{
-		f.day.value = d;
-		fieldChanged("day");
-	}
+	if(y == "0000") y = "";
+	f.year.value = y;
+	fieldChanged("year");
+
+	if(m == "00") m = "";
+	f.month.value = m;
+	fieldChanged("month");
+
+	if(d == "00") d = "";
+	f.day.value = d;
+	fieldChanged("day");
+
 	f.startdayofyear.value = "";
+	f.enddayofyear.value = "";
 	try{
-		if(m == 0 || d == 0){
-			f.startdayofyear.value = "";
-		}
-		else{
+		if(m > 0 && d > 0){
 			eDate = new Date(y,m-1,d);
 			if(eDate instanceof Date && eDate != "Invalid Date"){
 				var onejan = new Date(y,0,1);
@@ -975,77 +1045,6 @@ function distributeEventDate(y,m,d){
 	}
 	catch(e){
 	}
-}
-
-function endDateChanged(){
-	var dateStr = document.getElementById("endDate").value;
-	if(dateStr != ""){
-		var dateArr = parseDate(dateStr);
-		if(dateArr['y'] == 0){
-			alert("Unable to interpret Date. Please use the following formats: yyyy-mm-dd, mm/dd/yyyy, or dd mmm yyyy");
-			return false;
-		}
-		else{
-			//Check to see if date is in the future
-			try{
-				var testDate = new Date(dateArr['y'],dateArr['m']-1,dateArr['d']);
-				var today = new Date();
-				if(testDate > today){
-					alert("Was this plant really collected in the future? The date you entered has not happened yet. Please revise.");
-					return false;
-				}
-			}
-			catch(e){
-			}
-
-			//Invalid format is month > 12
-			if(dateArr['m'] > 12){
-				alert("Month cannot be greater than 12. Note that the format should be YYYY-MM-DD");
-				return false;
-			}
-
-			//Check to see if day is valid
-			if(dateArr['d'] > 28){
-				if(dateArr['d'] > 31
-					|| (dateArr['d'] == 30 && dateArr['m'] == 2)
-					|| (dateArr['d'] == 31 && (dateArr['m'] == 4 || dateArr['m'] == 6 || dateArr['m'] == 9 || dateArr['m'] == 11))){
-					alert("The Day (" + dateArr['d'] + ") is invalid for that month");
-					return false;
-				}
-			}
-
-			//Enter date into date fields
-			var mStr = dateArr['m'];
-			if(mStr.length == 1){
-				mStr = "0" + mStr;
-			}
-			var dStr = dateArr['d'];
-			if(dStr.length == 1){
-				dStr = "0" + dStr;
-			}
-			document.getElementById("endDate").value = dateArr['y'] + "-" + mStr + "-" + dStr;
-			if(dateArr['y'] > 0){
-				var f = document.fullform;
-				f.enddayofyear.value = "";
-				try{
-					if(dateArr['m'] == 0 || dateArr['d'] == 0){
-						f.enddayofyear.value = "";
-					}
-					else{
-						eDate = new Date(dateArr['y'],dateArr['m']-1,dateArr['d']);
-						if(eDate instanceof Date && eDate != "Invalid Date"){
-							var onejan = new Date(dateArr['y'],0,1);
-							f.enddayofyear.value = Math.ceil((eDate - onejan) / 86400000) + 1;
-							fieldChanged("enddayofyear");
-						}
-					}
-				}
-				catch(e){
-				}
-			}
-		}
-	}
-	return true;
 }
 
 function verbatimEventDateChanged(vedObj){
@@ -1156,7 +1155,6 @@ function initDetAutocomplete(f){
 		minLength: 3,
 		change: function(event, ui) {
 			if(f.sciname.value){
-				pauseSubmit = true;
 				verifyDetSciName(f);
 			}
 			else{
@@ -1227,60 +1225,18 @@ function verifyDetForm(f){
 		alert("Sort Sequence field must be a numeric value only");
 		return false;
 	}
-	//If sciname was changed and submit was clicked immediately afterward, wait 5 seconds so that name can be verified 
-	if(pauseSubmit){
-		var date = new Date();
-		var curDate = null;
-		do{ 
-			curDate = new Date(); 
-		}while(curDate - date < 5000 && pauseSubmit);
-	}
-	return true;
-}
-
-//Image tab form methods 
-function verifyImgAddForm(f){
-	var filePath = f.elements["imgfile"].value;
-	if(filePath == ""){
-		if(f.elements["imgurl"].value == ""){
-			alert("Select an image file or enter a URL to an existing image");
-			return false;
-		}
-		else{
-			filePath = f.elements["imgfile"].value
-		}
-	}
-	filePath = filePath.toLowerCase();
-	if((filePath.indexOf(".tif") > -1) || (filePath.indexOf(".png") > -1) && (filePath.indexOf(".dng") > -1)){
-		alert("Input file must be a web-optimized image (e.g. jpg). File appears to be an archival image (e.g. tif, png, dng, etc).");
-		return false;
-	}
-	return true;
-}
-
-function verifyImgEditForm(f){
-
-	return true;
-}
-
-function verifyImgDelForm(f){
-	if(confirm('Are you sure you want to delete this image? Note that the physical image will be deleted from the server if checkbox is selected.')){
-		return true;
-	}
-	return false;
-}
-
-function verifyImgRemapForm(f){
-	if(f.targetoccid.value == ''){
-		alert("Enter the occurrence record identifier (occid) of the occurrence record you want to transfer to");
-		return false;
-	}
 	return true;
 }
 
 //Misc
 function dwcDoc(dcTag){
-	dwcWindow=open("http://symbiota.org/docs/symbiota-occurrence-data-fields-2/#"+dcTag,"dwcaid","width=1250,height=300,left=20,top=20,scrollbars=1");
+	var language = getCookie("lang");
+	if(language == "es"){
+		dwcWindow=open("https://biokic.github.io/symbiota-docs/es/editor/edit/fields/#"+dcTag,"dwcaid","width=1250,height=300,left=20,top=20,scrollbars=1");
+	}
+	else{
+		dwcWindow=open("https://biokic.github.io/symbiota-docs/editor/edit/fields/#"+dcTag,"dwcaid","width=1250,height=300,left=20,top=20,scrollbars=1");
+	}
 	//dwcWindow=open("http://rs.tdwg.org/dwc/terms/index.htm#"+dcTag,"dwcaid","width=1250,height=300,left=20,top=20,scrollbars=1");
 	if(dwcWindow.opener == null) dwcWindow.opener = self;
 	dwcWindow.focus();
@@ -1289,7 +1245,7 @@ function dwcDoc(dcTag){
 
 function openOccurrenceSearch(target) {
 	collId = document.fullform.collid.value;
-	occWindow=open("../misc/occurrencesearch.php?targetid="+target+"&collid="+collId,"occsearch","resizable=1,scrollbars=1,toolbar=0,width=750,height=600,left=20,top=20");
+	occWindow=open("../misc/occurrencesearch.php?targetid="+target+"&collid="+collId,"occsearch","resizable=1,scrollbars=1,toolbar=0,width=750,height=600,left=200,top=40");
 	occWindow.focus();
 	if (occWindow.opener == null) occWindow.opener = self;
 }
@@ -1311,7 +1267,7 @@ function localitySecurityReasonChanged(){
 
 function securityLockChanged(cb){
 	if(cb.checked == true){
-		if($("input[name=localitysecurityreason]").val() == '') $("input[name=localitysecurityreason]").val("<Security Setting Locked>");
+		if($("input[name=localitysecurityreason]").val() == '') $("input[name=localitysecurityreason]").val("[Security Setting Locked]");
 	}
 	else{
 		$("input[name=localitysecurityreason]").val("")

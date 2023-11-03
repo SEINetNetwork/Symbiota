@@ -10,6 +10,9 @@ $cid = array_key_exists('cid',$_REQUEST)?$_REQUEST['cid']:0;
 $tabIndex = array_key_exists('tabindex',$_REQUEST)?$_REQUEST['tabindex']:0;
 $langId = array_key_exists('langid',$_REQUEST)?$_REQUEST['langid']:'';
 
+$isEditor = false;
+if($IS_ADMIN || array_key_exists('KeyAdmin',$USER_RIGHTS)) $isEditor = true;
+
 $keyManager = new KeyCharAdmin();
 $keyManager->setLangId($langId);
 //$keyManager->setCollId($collId);
@@ -17,7 +20,7 @@ $keyManager->setLangId($langId);
 $keyManager->setCid($cid);
 
 $statusStr = '';
-if($formSubmit){
+if($formSubmit && $isEditor){
 	if($formSubmit == 'Create'){
 		$statusStr = $keyManager->createCharacter($_POST,$PARAMS_ARR['un']);
 		$cid = $keyManager->getCid();
@@ -26,7 +29,7 @@ if($formSubmit){
 		$statusStr = $keyManager->editCharacter($_POST);
 	}
 	elseif($formSubmit == 'Add State'){
-		$keyManager->createCharState($_POST['charstatename'],$_POST['illustrationurl'],$_POST['description'],$_POST['notes'],$_POST['sortsequence'],$PARAMS_ARR['un']);
+		$keyManager->createCharState($_POST,$PARAMS_ARR['un']);
 		$tabIndex = 1;
 	}
 	elseif($formSubmit == 'Save State'){
@@ -68,16 +71,9 @@ if(!$cid) header('Location: index.php');
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=<?php echo $CHARSET;?>">
 	<title>Character Admin</title>
-  <?php
-      $activateJQuery = true;
-      if(file_exists($SERVER_ROOT.'/includes/head.php')){
-        include_once($SERVER_ROOT.'/includes/head.php');
-      }
-      else{
-        echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-        echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-      }
+	<link href="<?php echo $CSS_BASE_PATH; ?>/jquery-ui.css" type="text/css" rel="stylesheet">
+	<?php
+	include_once($SERVER_ROOT.'/includes/head.php');
 	?>
 	<script type="text/javascript" src="../../js/jquery.js"></script>
 	<script type="text/javascript" src="../../js/jquery-ui.js"></script>
@@ -232,7 +228,17 @@ if(!$cid) header('Location: index.php');
 			newWindow = window.open("headingadmin.php","headingWin","scrollbars=1,toolbar=0,resizable=1,width=800,height=600,left=50,top=50");
 			if (newWindow.opener == null) newWindow.opener = self;
 		}
+
+		function openGlossaryPopup(glossid){
+			var urlStr = "../../glossary/individual.php?glossid="+glossid;
+			glossWindow = window.open(urlStr,'popup','toolbar=0,status=1,scrollbars=1,width=900,height=450,left=20,top=20');
+			if(glossWindow.opener == null) glossWindow.opener = self;
+			return false;
+		}
 	</script>
+	<style type="text/css">
+		fieldset{ margin:15px;padding:15px; }
+	</style>
 </head>
 <body>
 	<?php
@@ -245,7 +251,7 @@ if(!$cid) header('Location: index.php');
 	<!-- This is inner text! -->
 	<div id="innertext">
 		<?php
-		if($SYMB_UID){
+		if($isEditor){
 			if($statusStr){
 				?>
 				<hr/>
@@ -268,7 +274,7 @@ if(!$cid) header('Location: index.php');
 				</ul>
 				<div id="chardetaildiv">
 					<form name="chareditform" action="chardetails.php" method="post" onsubmit="return validateCharEditForm(this)">
-						<fieldset style="margin:15px;padding:15px;">
+						<fieldset>
 							<legend><b>Character Details</b></legend>
 							<div style="padding-top:4px;">
 								<b>Character Name</b><br />
@@ -297,9 +303,9 @@ if(!$cid) header('Location: index.php');
 									</select>
 								</div>
 								<div style="float:left;margin-left:15px;">
-									<b>Heading</b><br />
-									<select name="hid" style="width:125px;">
-										<option value="">Select Heading</option>
+									<b>Grouping</b><br />
+									<select name="hid">
+										<option value="">Not Assigned</option>
 										<option value="">---------------------</option>
 										<?php
 										$headingArr = $keyManager->getHeadingArr();
@@ -314,19 +320,43 @@ if(!$cid) header('Location: index.php');
 							</div>
 							<div style="padding-top:8px;clear:both;">
 								<b>Help URL</b><br />
-								<input type="text" name="helpurl" maxlength="500" style="width:500px;" value="<?php echo $charArr['helpurl']; ?>" />
+								<input type="text" name="helpurl" maxlength="500" style="width:80%;" value="<?php echo $charArr['helpurl']; ?>" />
+								<?php
+								if($charArr['helpurl'] && substr($charArr['helpurl'],0,4) == 'http') echo '<a href="'.$charArr['helpurl'].'" target="_blank"><img src="../../images/link2.png" style="width:15px" /></a>';
+								?>
 							</div>
+							<?php
+							$glossArr = $keyManager->getGlossaryList();
+							if($glossArr){
+								?>
+								<div style="padding-top:8px;clear:both;">
+									<b>Glossary link</b><br />
+									<select name="glossid">
+										<option value="">------------------------</option>
+										<?php
+										foreach($glossArr as $glossID => $gArr){
+											echo '<option value="'.$glossID.'" '.($charArr['glossid']==$glossID?'selected':'').'>'.$gArr['term'].' ('.$gArr['lang'].')</option>';
+										}
+										?>
+									</select>
+									<?php
+									if($charArr['glossid']) echo '<a href="#" onclick="openGlossaryPopup('.$charArr['glossid'].');return false;"><img src="../../images/link2.png" style="width:15px" /></a>';
+									?>
+								</div>
+								<?php
+							}
+							?>
 							<div style="padding-top:8px;">
 								<b>Description</b><br />
-								<input type="text" name="description" maxlength="255" style="width:500px;" value="<?php echo $charArr['description']; ?>" />
+								<input type="text" name="description" maxlength="255" style="width:80%;" value="<?php echo $charArr['description']; ?>" />
 							</div>
 							<div style="padding-top:8px;">
 								<b>Notes</b><br />
-								<input type="text" name="notes" maxlength="255" style="width:500px;" value="<?php echo $charArr['notes']; ?>" />
+								<input type="text" name="notes" maxlength="255" style="width:80%;" value="<?php echo $charArr['notes']; ?>" />
 							</div>
 							<div style="padding-top:8px;">
 								<b>Sort Sequence</b><br />
-								<input type="text" name="sortsequence" style="" value="<?php echo $charArr['sortsequence']; ?>" />
+								<input type="text" name="sortsequence" style="width:80px;" value="<?php echo $charArr['sortsequence']; ?>" />
 							</div>
 							<div style="width:100%;padding-top:6px;">
 								<div style="float:left;">
@@ -349,7 +379,7 @@ if(!$cid) header('Location: index.php');
 					</div>
 					<div id="newstatediv" style="display:<?php echo ($charStateArr?'none':'block');?>;">
 						<form name="stateaddform" action="chardetails.php" method="post" onsubmit="return validateStateAddForm(this)">
-							<fieldset style="margin:15px;padding:20px;">
+							<fieldset>
 								<legend><b>Add Character State</b></legend>
 								<div style="padding-top:4px;">
 									<b>Character State Name</b><br />
@@ -357,15 +387,32 @@ if(!$cid) header('Location: index.php');
 								</div>
 								<div style="padding-top:4px;">
 									<b>Description</b><br />
-									<input type="text" name="description" maxlength="255" style="width:500px;" />
+									<input type="text" name="description" maxlength="255" style="width:80%;" />
 								</div>
+								<?php
+								if($glossArr){
+									?>
+									<div style="padding-top:8px;clear:both;">
+										<b>Glossary link</b><br />
+										<select name="glossid">
+											<option value="">------------------------</option>
+											<?php
+											foreach($glossArr as $glossID => $gArr){
+												echo '<option value="'.$glossID.'">'.$gArr['term'].' ('.$gArr['lang'].')</option>';
+											}
+											?>
+										</select>
+									</div>
+									<?php
+								}
+								?>
 								<div style="padding-top:4px;">
 									<b>Notes</b><br />
-									<input type="text" name="notes" style="width:500px;" />
+									<input type="text" name="notes" style="width:80%;" />
 								</div>
 								<div style="padding-top:4px;">
 									<b>Sort Sequence</b><br />
-									<input type="text" name="sortsequence" />
+									<input type="text" name="sortsequence" style="width:80px" />
 								</div>
 								<div style="width:100%;padding-top:6px;">
 									<input name="cid" type="hidden" value="<?php echo $cid; ?>" />
@@ -394,7 +441,7 @@ if(!$cid) header('Location: index.php');
 										</a>
 									</div>
 									<form name="stateeditform-<?php echo $cs; ?>" action="chardetails.php" method="post" onsubmit="return validateStateEditForm(this)">
-										<fieldset style="margin:15px;padding:15px;">
+										<fieldset>
 											<legend><b>Character State Details</b></legend>
 											<div>
 												<b>Character State Name</b><br />
@@ -402,11 +449,31 @@ if(!$cid) header('Location: index.php');
 											</div>
 											<div style="padding-top:2px;">
 												<b>Description</b><br />
-												<input type="text" name="description" maxlength="255" style="width:500px;" value="<?php echo $stateArr['description']; ?>"/>
+												<input type="text" name="description" maxlength="255" style="width:80%;" value="<?php echo $stateArr['description']; ?>"/>
 											</div>
+											<?php
+											if($glossArr){
+												?>
+												<div style="padding-top:8px;clear:both;">
+													<b>Glossary link</b><br />
+													<select name="glossid">
+														<option value="">------------------------</option>
+														<?php
+														foreach($glossArr as $glossID => $gArr){
+															echo '<option value="'.$glossID.'" '.($stateArr['glossid']==$glossID?'selected':'').'>'.$gArr['term'].' ('.$gArr['lang'].')</option>';
+														}
+														?>
+													</select>
+													<?php
+													if($stateArr['glossid']) echo '<a href="#" onclick="openGlossaryPopup('.$stateArr['glossid'].');return false;"><img src="../../images/link2.png" style="width:15px" /></a>';
+													?>
+												</div>
+												<?php
+											}
+											?>
 											<div style="padding-top:2px;">
 												<b>Notes</b><br />
-												<input type="text" name="notes" style="width:500px;" value="<?php echo $stateArr['notes']; ?>" />
+												<input type="text" name="notes" style="width:80%;" value="<?php echo $stateArr['notes']; ?>" />
 											</div>
 											<div style="padding-top:2px;">
 												<div style="float:right;">
@@ -415,7 +482,7 @@ if(!$cid) header('Location: index.php');
 												</div>
 												<div>
 													<b>Sort Sequence</b><br />
-													<input type="text" name="sortsequence" value="<?php echo $stateArr['sortsequence']; ?>" />
+													<input type="text" name="sortsequence" value="<?php echo $stateArr['sortsequence']; ?>" style="width:80px" />
 												</div>
 											</div>
 											<div style="width:100%;margin:20px 0px 10px 20px;">
@@ -425,7 +492,7 @@ if(!$cid) header('Location: index.php');
 											</div>
 										</fieldset>
 									</form>
-									<fieldset style="margin:15px;padding:15px;">
+									<fieldset>
 										<legend><b>Illustration</b></legend>
 										<?php
 										if(isset($stateArr['csimgid'])){
@@ -470,7 +537,7 @@ if(!$cid) header('Location: index.php');
 										?>
 									</fieldset>
 									<form name="statedelform-<?php echo $cs; ?>" action="chardetails.php" method="post" onsubmit="return confirm('Are you sure you want to permanently delete this character state?')">
-										<fieldset style="margin:15px;padding:15px;">
+										<fieldset>
 											<legend><b>Delete Character State</b></legend>
 											Record first needs to be evaluated before it can be deleted from the system.
 											The evaluation ensures that the deletion will not interfer with
@@ -533,11 +600,11 @@ if(!$cid) header('Location: index.php');
 				</div>
 				<div id="chardeldiv">
 					<form name="delcharform" action="chardetails.php" method="post" onsubmit="return confirm('Are you sure you want to permanently delete this character?')">
-						<fieldset style="width:350px;margin:20px;padding:20px;">
+						<fieldset style="width:700px;">
 							<legend><b>Delete Character</b></legend>
 							<?php
 							if($charStateArr){
-								echo '<div style="font-weight:bold;margin-bottom:15px;">';
+								echo '<div style="margin-bottom:15px;">';
 								echo 'Character cannot be deleted until all character states are removed';
 								echo '</div>';
 							}

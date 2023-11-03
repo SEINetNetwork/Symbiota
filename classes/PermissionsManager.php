@@ -11,6 +11,7 @@ CollAdmin-#			Upload records; modify metadata
 CollEditor-#		Edit collection records
 CollTaxon-#:#		Edit collection records within taxonomic speciality
 
+ClCreate			Create Checklists
 ClAdmin-#			Checklist write access
 ProjAdmin-#			Project admin access
 KeyAdmin			Edit identification key characters and character states
@@ -34,10 +35,10 @@ class PermissionsManager{
 	public function getUser($uid){
 		$returnArr = Array();
 		if(is_numeric($uid)){
-			$sql = "SELECT u.uid, u.firstname, u.lastname, u.title, u.institution, u.city, u.state, ".
-				"u.zip, u.country, u.email, u.url, u.notes, ul.username, IFNULL(ul.lastlogindate,ul.initialTimestamp) AS lastlogindate ".
-				"FROM users u LEFT JOIN userlogin ul ON u.uid = ul.uid ".
-				"WHERE (u.uid = ".$uid.')';
+			$sql = 'SELECT uid, firstname, lastname, title, institution, city, state, zip, country, '.
+				'email, url, guid, notes, username, IFNULL(lastlogindate, initialTimestamp) AS lastlogindate '.
+				'FROM users '.
+				'WHERE (uid = '.$uid.')';
 			//echo "<div>$sql</div>";
 			$result = $this->conn->query($sql);
 			if($row = $result->fetch_object()){
@@ -51,9 +52,10 @@ class PermissionsManager{
 				$returnArr["zip"] = $row->zip;
 				$returnArr["country"] = $row->country;
 				$returnArr["email"] = $row->email;
-				$returnArr["url"] = $row->url;
-				$returnArr["notes"] = $row->notes;
-				$returnArr["username"] = $row->username;
+				$returnArr['url'] = $row->url;
+				$returnArr['guid'] = $row->guid;
+				$returnArr['notes'] = $row->notes;
+				$returnArr['username'] = $row->username;
 				$returnArr['lastlogindate'] = $row->lastlogindate;
 			}
 			$result->free();
@@ -141,9 +143,7 @@ class PermissionsManager{
 
 			//If there are checklist, fetch names
 			if(array_key_exists("ClAdmin",$perArr)){
-				$sql = "SELECT cl.clid, cl.name FROM fmchecklists cl ".
-					"WHERE (cl.clid IN(".implode(",",array_keys($perArr["ClAdmin"]))."))".
-					"ORDER BY cl.name";
+				$sql = 'SELECT clid, name FROM fmchecklists WHERE clid IN('.implode(',',array_keys($perArr['ClAdmin'])).') ORDER BY name';
 				$result = $this->conn->query($sql);
 				while($row = $result->fetch_object()){
 					$perArr["ClAdmin"][$row->clid]['name'] = $row->name;
@@ -199,6 +199,24 @@ class PermissionsManager{
 		return $statusStr;
 	}
 
+	public function addClCreateRole($uid){
+		$statusStr = '';
+		if(is_numeric($uid)){
+
+			$sql = 'SELECT uid,role,tablepk,secondaryVariable,uidassignedby FROM userroles WHERE (uid = '.$uid.') AND (role = "ClCreate");';
+			$rs = $this->conn->query($sql);
+			if(!$rs->num_rows){
+				$sql1 = 'INSERT INTO userroles(uid,role,uidassignedby) '.
+					'VALUES('.$uid.',"ClCreate",'.$GLOBALS["SYMB_UID"].')';
+				if(!$this->conn->query($sql1)){
+					$statusStr = 'ERROR adding user permission: '.$this->conn->error;
+				}
+			}
+			$rs->free();
+		}
+		return $statusStr;
+	}
+
 	public function getTaxonEditorArr($collid, $limitByColl = 0){
 		//grab the current permissions
 		$pArr = array();
@@ -226,10 +244,9 @@ class PermissionsManager{
 		$rs2->free();
 		//Get editors
 		$retArr = array();
-		$sql = 'SELECT ut.idusertaxonomy, u.uid, CONCAT_WS(", ", lastname, firstname) as fullname, t.sciname, l.username '.
+		$sql = 'SELECT ut.idusertaxonomy, u.uid, CONCAT_WS(", ", u.lastname, u.firstname) as fullname, t.sciname, u.username '.
 			'FROM usertaxonomy ut INNER JOIN users u ON ut.uid = u.uid '.
 			'INNER JOIN taxa t ON ut.tid = t.tid '.
-			'INNER JOIN userlogin l ON u.uid = l.uid '.
 			'WHERE ut.editorstatus = "OccurrenceEditor" ';
 		if($limitByColl && $pArr){
 			$sql .= 'AND ut.uid IN('.implode(',',array_keys($pArr)).') ';
@@ -267,12 +284,8 @@ class PermissionsManager{
 	public function getCollectionMetadata($collType = ''){
 		$retArr = Array();
 		$sql = 'SELECT collid, collectionname, institutioncode, collectioncode, colltype FROM omcollections ';
-		if(is_numeric($collType)){
-			$sql .= 'WHERE (collid = '.$collType.') ';
-		}
-		else{
-			$sql .= 'WHERE (colltype = "'.$this->cleanInStr($collType).'") ';
-		}
+		if(is_numeric($collType)) $sql .= 'WHERE (collid = '.$collType.') ';
+		else $sql .= 'WHERE (colltype = "'.$this->cleanInStr($collType).'") ';
 		$sql .= 'ORDER BY collectionname';
 		//echo $sql;
 		$rs = $this->conn->query($sql);
@@ -318,14 +331,13 @@ class PermissionsManager{
 
 	public function getUsers($searchTerm=''){
 		$retArr = Array();
-		$sql = 'SELECT u.uid, CONCAT_WS(", ",u.lastname,u.firstname) AS uname, l.username '.
-			'FROM users u LEFT JOIN userlogin l ON u.uid = l.uid ';
+		$sql = 'SELECT uid, CONCAT_WS(", ", lastname, firstname) AS uname, username FROM users ';
 		if($searchTerm){
 			$searchTerm = $this->cleanInStr($searchTerm);
-			$sql .= 'WHERE (u.lastname LIKE "'.$searchTerm.'%") ';
-			if(strlen($searchTerm) > 1) $sql .= "OR (l.username LIKE '".$searchTerm."%') ";
+			$sql .= 'WHERE (lastname LIKE "'.$searchTerm.'%") ';
+			if(strlen($searchTerm) > 1) $sql .= 'OR (username LIKE "'.$searchTerm.'%") ';
 		}
-		$sql .= 'ORDER BY u.lastname, u.firstname';
+		$sql .= 'ORDER BY lastname, firstname';
 		//echo "<div>".$sql."</div>";
 		$rs = $this->conn->query($sql);
 		while($r = $rs->fetch_object()){
@@ -355,7 +367,6 @@ class PermissionsManager{
 		$sql = 'SELECT cl.clid, cl.name FROM fmchecklists cl ';
 		if($clKeys) $sql .= 'WHERE (cl.access != "private") AND (cl.clid NOT IN('.implode(',',$clKeys).')) ';
 		$sql .= 'ORDER BY cl.name';
-		//echo $sql;
 		$result = $this->conn->query($sql);
 		while($row = $result->fetch_object()){
 			$returnArr[$row->clid] = $row->name;

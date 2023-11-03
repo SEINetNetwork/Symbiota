@@ -1,6 +1,6 @@
 function displayTableView(f){
 	f.action = "listtabledisplay.php";
-	f.submit();	
+	f.submit();
 }
 
 function cleanNumericInput(formElem){
@@ -13,10 +13,25 @@ function cleanNumericInput(formElem){
 
 function checkHarvestParamsForm(frm){
 	//make sure they have filled out at least one field.
-	if((frm.taxa.value.trim() == '') && (frm.country.value.trim() == '') && (frm.state.value.trim() == '') && (frm.county.value.trim() == '') &&
-		(frm.local.value.trim() == '') && (frm.elevlow.value.trim() == '') && (frm.upperlat.value.trim() == '') && (frm.footprintwkt.value.trim() == '') && (frm.pointlat.value.trim() == '') &&
-		(frm.collector.value.trim() == '') && (frm.collnum.value.trim() == '') && (frm.eventdate1.value.trim() == '') && (frm.catnum.value.trim() == '') &&
-		(frm.typestatus.checked == false) && (frm.hasimages.checked == false) && (frm.hasgenetic.checked == false)){
+	let searchDefined = false;
+	let traitInputs = frm.elements;
+ 	for(var i = 0; i < traitInputs.length; i++) {
+		if(traitInputs[i].type == "text" || traitInputs[i].type == "textarea"){
+			if(traitInputs[i].value.trim() != ""){
+				searchDefined = true;
+				break;
+			}
+		}
+		else if(traitInputs[i].type == "checkbox" || traitInputs[i].type == "radio"){
+			if(traitInputs[i].name != "usethes" && traitInputs[i].name != "includeothercatnum" && traitInputs[i].name != "includecult"){
+				if(traitInputs[i].checked){
+					searchDefined = true;
+					break;
+				}
+			}
+		}
+	}
+	if(!searchDefined) {
 		alert("Please fill in at least one search parameter!");
 		return false;
 	}
@@ -37,17 +52,17 @@ function checkHarvestParamsForm(frm){
 			alert("Longitude values can not be greater than 180 or less than -180.");
 			return false;
 		}
-		var uLat = frm.upperlat.value;
+		let uLat = frm.upperlat.value;
 		if(frm.upperlat_NS.value == 'S') uLat = uLat * -1;
-		var bLat = frm.bottomlat.value;
+		let bLat = frm.bottomlat.value;
 		if(frm.bottomlat_NS.value == 'S') bLat = bLat * -1;
 		if(uLat < bLat){
 			alert("Your northern latitude value is less then your southern latitude value. Please correct this.");
 			return false;
 		}
-		var lLng = frm.leftlong.value;
+		let lLng = frm.leftlong.value;
 		if(frm.leftlong_EW.value == 'W') lLng = lLng * -1;
-		var rLng = frm.rightlong.value;
+		let rLng = frm.rightlong.value;
 		if(frm.rightlong_EW.value == 'W') rLng = rLng * -1;
 		if(lLng > rLng){
 			alert("Your western longitude value is greater then your eastern longitude value. Please correct this. Note that western hemisphere longitudes in the decimal format are negitive.");
@@ -66,11 +81,10 @@ function checkHarvestParamsForm(frm){
 	return true;
 }
 
-function setHarvestParamsForm(){
+function setHarvestParamsForm(frm){
 	if(sessionStorage.querystr){
 		var urlVar = parseUrlVariables(sessionStorage.querystr);
-		var frm = document.harvestparams;
-		
+
 		if(typeof urlVar.usethes !== 'undefined' && (urlVar.usethes == "" || urlVar.usethes == "0")){frm.usethes.checked = false;}
 		if(urlVar.taxontype){frm.taxontype.value = urlVar.taxontype;}
 		if(urlVar.taxa){frm.taxa.value = urlVar.taxa;}
@@ -112,8 +126,16 @@ function setHarvestParamsForm(){
 		if(typeof urlVar.typestatus !== 'undefined'){frm.typestatus.checked = true;}
 		if(typeof urlVar.hasimages !== 'undefined'){frm.hasimages.checked = true;}
 		if(typeof urlVar.hasgenetic !== 'undefined'){frm.hasgenetic.checked = true;}
+		if(typeof urlVar.hascoords !== 'undefined'){frm.hascoords.checked = true;}
 		if(typeof urlVar.includecult !== 'undefined'){frm.includecult.checked = true;}
 		if(urlVar.db){frm.db.value = urlVar.db;}
+		for(var i in urlVar) {
+			if(`${i}`.indexOf('traitid-') == 0) {
+				var traitInput = document.getElementById("traitstateid-" + urlVar[i]);
+				if(traitInput.type == 'checkbox' || traitInput.type == 'radio') { traitInput.checked = true; };
+				// if(traitInput.type == 'select') { traitInput.value = urlVar[i]; }; // Must improve this to deal with multiple possible selections
+			}
+		}
 	}
 }
 
@@ -121,7 +143,7 @@ function parseUrlVariables(varStr) {
 	var result = {};
 	varStr.split("&").forEach(function(part) {
 		if(!part) return;
-		part = part.split("+").join(" "); 
+		part = part.split("+").join(" ");
 		var eq = part.indexOf("=");
 		var key = eq>-1 ? part.substr(0,eq) : part;
 		var val = eq>-1 ? decodeURIComponent(part.substr(eq+1)) : "";

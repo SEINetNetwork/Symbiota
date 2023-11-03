@@ -1,5 +1,4 @@
 <?php
-include_once($SERVER_ROOT.'/config/dbconnection.php');
 include_once($SERVER_ROOT.'/classes/Manager.php');
 
 class OccurrenceEditReview extends Manager{
@@ -11,7 +10,8 @@ class OccurrenceEditReview extends Manager{
 	private $display = 1;
 	private $appliedStatusFilter = '';
 	private $reviewStatusFilter;
-	private $editorUidFilter;
+	private $fieldNameFilter;
+	private $editorFilter;
 	private $queryOccidFilter;
 	private $startDateFilter;
 	private $endDateFilter;
@@ -30,8 +30,7 @@ class OccurrenceEditReview extends Manager{
 	public function setCollId($id){
 		if(is_numeric($id)){
 			$this->collid = $id;
-			$sql = 'SELECT collectionname, institutioncode, collectioncode, colltype '.
-				'FROM omcollections WHERE (collid = '.$id.')';
+			$sql = 'SELECT collectionname, institutioncode, collectioncode, colltype FROM omcollections WHERE (collid = '.$id.')';
 			$rs = $this->conn->query($sql);
 			while($r = $rs->fetch_object()){
 				$collName = $r->collectionname.' (';
@@ -72,7 +71,6 @@ class OccurrenceEditReview extends Manager{
 	//Occurrence edits (omoccuredits)
 	private function getOccurEditCnt(){
 		$sql = 'SELECT COUNT(e.ocedid) AS fullcnt '.$this->getEditSqlBase();
-		//echo $sql; exit;
 		$rsCnt = $this->conn->query($sql);
 		if($rCnt = $rsCnt->fetch_object()){
 			$recCnt = $rCnt->fullcnt;
@@ -83,25 +81,39 @@ class OccurrenceEditReview extends Manager{
 
 	private function getOccurEditArr(){
 		$retArr = Array();
-		$sql = 'SELECT e.ocedid,e.occid,o.catalognumber,e.fieldname,e.fieldvaluenew,e.fieldvalueold,e.reviewstatus,e.appliedstatus,e.uid, e.initialtimestamp '.
+		$sql = 'SELECT e.ocedid,e.occid,o.catalognumber,o.othercatalognumbers,e.fieldname,e.fieldvaluenew,e.fieldvalueold,e.reviewstatus,e.appliedstatus,e.uid, e.initialtimestamp '.
 			$this->getEditSqlBase().' ORDER BY e.initialtimestamp DESC, e.fieldname ASC '.
 			'LIMIT '.($this->pageNumber*$this->limitNumber).','.($this->limitNumber+1);
 		//echo '<div>'.$sql.'</div>';
 		$rs = $this->conn->query($sql);
 		while($r = $rs->fetch_object()){
 			$retArr[$r->occid][$r->ocedid][$r->appliedstatus]['ts'] = $r->initialtimestamp;
-			$retArr[$r->occid][$r->ocedid][$r->appliedstatus]['catnum'] = $r->catalognumber;
 			$retArr[$r->occid][$r->ocedid][$r->appliedstatus]['rstatus'] = $r->reviewstatus;
 			$retArr[$r->occid][$r->ocedid][$r->appliedstatus]['uid'] = $r->uid;
 			$retArr[$r->occid][$r->ocedid][$r->appliedstatus]['f'][$r->fieldname]['old'] = $r->fieldvalueold;
 			$retArr[$r->occid][$r->ocedid][$r->appliedstatus]['f'][$r->fieldname]['new'] = $r->fieldvaluenew;
+			$retArr[$r->occid]['catnum'] = $r->catalognumber . ($r->catalognumber && $r->othercatalognumbers ? '<br>' : '') . $r->othercatalognumbers;
 		}
 		$rs->free();
+		$this->appendAdditionalIdentifiers($retArr);
 		return $retArr;
 	}
 
+	private function appendAdditionalIdentifiers(&$occArr){
+		if($occArr){
+			$sql = 'SELECT occid, identifierValue, identifierName FROM omoccuridentifiers WHERE occid IN('.implode(',',array_keys($occArr)).') ORDER BY sortBy';
+			$rs = $this->conn->query($sql);
+			while($r = $rs->fetch_object()){
+				if(!$occArr[$r->occid]['catnum'] || strpos($occArr[$r->occid]['catnum'], $r->identifierValue) === false){
+					if($occArr[$r->occid]['catnum']) $occArr[$r->occid]['catnum'] .= '<br>';
+					$occArr[$r->occid]['catnum'] .= $r->identifierValue;
+				}
+			}
+			$rs->free();
+		}
+	}
+
 	private function getEditSqlBase($includeUserTable=false){
-		//Build SQL WHERE fragment
 		$sqlBase = '';
 		if($this->collid){
 			$sqlBase = 'FROM omoccuredits e INNER JOIN omoccurrences o ON e.occid = o.occid ';
@@ -112,6 +124,9 @@ class OccurrenceEditReview extends Manager{
 			}
 			if($this->reviewStatusFilter){
 				$sqlBase .= 'AND (e.reviewstatus IN('.$this->reviewStatusFilter.')) ';
+			}
+			if($this->fieldNameFilter){
+				$sqlBase .= 'AND (e.fieldName = "'.$this->cleanInStr($this->fieldNameFilter).'") ';
 			}
 			if($this->editorFilter){
 				$sqlBase .= 'AND (e.uid = '.$this->editorFilter.') ';
@@ -135,7 +150,7 @@ class OccurrenceEditReview extends Manager{
 	//Occurrence revisions
 	private function getRevisionCnt(){
 		$sql = 'SELECT COUNT(r.orid) AS fullcnt '.$this->getRevisionSqlBase();
-		//echo $sql; exit;
+		//echo 'revision cnt: '.$sql.'<br/>';
 		$rsCnt = $this->conn->query($sql);
 		if($rCnt = $rsCnt->fetch_object()){
 			$recCnt = $rCnt->fullcnt;
@@ -154,15 +169,15 @@ class OccurrenceEditReview extends Manager{
 		$rs = $this->conn->query($sql);
 		while($r = $rs->fetch_object()){
 
-			$retArr[$r->occid][$r->orid][$r->appliedstatus]['catnum'] = $r->catalognumber;
+			$retArr[$r->occid][$r->orid][$r->appliedstatus]['ts'] = $r->initialtimestamp;
+			$retArr[$r->occid][$r->orid][$r->appliedstatus]['rstatus'] = $r->reviewstatus;
+			$retArr[$r->occid][$r->orid][$r->appliedstatus]['uid'] = $r->uid;
 			$retArr[$r->occid][$r->orid][$r->appliedstatus]['exsource'] = $r->externalsource;
 			$retArr[$r->occid][$r->orid][$r->appliedstatus]['exeditor'] = $r->externaleditor;
-			$retArr[$r->occid][$r->orid][$r->appliedstatus]['rstatus'] = $r->reviewstatus;
 			$retArr[$r->occid][$r->orid][$r->appliedstatus]['errmsg'] = $r->errormessage;
 			$retArr[$r->occid][$r->orid][$r->appliedstatus]['editor'] = $r->externaleditor;
-			$retArr[$r->occid][$r->orid][$r->appliedstatus]['uid'] = $r->uid;
 			$retArr[$r->occid][$r->orid][$r->appliedstatus]['extstamp'] = $r->externaltimestamp;
-			$retArr[$r->occid][$r->orid][$r->appliedstatus]['ts'] = $r->initialtimestamp;
+			$retArr[$r->occid]['catnum'] = $r->catalognumber;
 
 			$oldValues = json_decode($r->oldvalues,true);
 			$newValues = json_decode($r->newvalues,true);
@@ -231,74 +246,183 @@ class OccurrenceEditReview extends Manager{
 		$status = true;
 		$idStr = implode(',',$postArr['id']);
 		if($idStr){
-			$ocedidStr = $this->getFullOcedidStr($idStr);
+			//$idStr = $this->getFullOcedidStr($idStr);
 			//Apply edits
 			$applyTask = $postArr['applytask'];
 			//Apply edits with applied status = 0
-			$sql = 'SELECT occid, fieldname, fieldvalueold, fieldvaluenew '.
-				'FROM omoccuredits '.
-				'WHERE appliedstatus = '.($applyTask == 'apply'?'0':'1').' AND (ocedid IN('.$ocedidStr.')) ORDER BY initialtimestamp';
-			//echo '<div>'.$sql.'</div>'; exit;
+			$sql = 'SELECT ocedid, occid, fieldname, fieldvalueold, fieldvaluenew, appliedstatus FROM omoccuredits WHERE (ocedid IN('.$idStr.')) ORDER BY initialtimestamp';
 			$rs = $this->conn->query($sql);
 			while($r = $rs->fetch_object()){
-				if($applyTask == 'apply') $value = $r->fieldvaluenew;
-				else $value = $r->fieldvalueold;
-				$uSql = 'UPDATE omoccurrences '.
-					'SET '.$r->fieldname.' = '.($value?'"'.$this->cleanInStr($value).'"':'NULL').' '.
-					'WHERE (occid = '.$r->occid.')';
-				//echo '<div>'.$uSql.'</div>';
-				if(!$this->conn->query($uSql)){
-					$this->warningArr[] = 'ERROR '.($applyTask == 'apply'?'applying':'reverting').' edits: '.$this->conn->error;
-					$status = false;
+				$status = false;
+				if($applyTask){
+					if($applyTask == 'apply') $value = $r->fieldvaluenew;
+					else $value = $r->fieldvalueold;
+					$tableName = 'omoccurrences';
+					$fieldName = $r->fieldname;
+					if($fieldName == 'omoccuridentifiers') $tableName = 'omoccuridentifiers';
+					if(strpos($fieldName, ':')){
+						$pArr = explode(':', $fieldName);
+						$tableName = $pArr[0];
+						$fieldName = $pArr[1];
+					}
+					if(($applyTask == 'apply' && !$r->appliedstatus) || ($applyTask != 'apply' && $r->appliedstatus)){
+						if($tableName == 'omoccuridentifiers'){
+							$status = $this->applyIdentifierEdits($r->occid, $fieldName, $r->fieldvalueold, $r->fieldvaluenew, $applyTask);
+						}
+						elseif($tableName == 'omoccurpaleo'){
+							$status = $this->applyPaleoEdits($r->occid, $fieldName, $value, $applyTask);
+						}
+						elseif($tableName == 'omexsiccatiocclink'){
+							$status = $this->applyExsiccatiEdits($r->occid, $fieldName, $value, $applyTask);
+						}
+						elseif($tableName == 'omoccurrences'){
+							$status = $this->applyOccurrenceEdit($r->occid, $fieldName, $value, $applyTask);
+						}
+					}
+					if($postArr['rstatus']) $status = true;
+					if(!$status) $applyTask = '';
 				}
 			}
 			$rs->free();
-			//Change status
-			$sql = 'UPDATE omoccuredits SET appliedstatus = '.($applyTask=='apply'?1:0);
-			if($postArr['rstatus']){
-				$sql .= ',reviewstatus = '.$postArr['rstatus'];
-			}
-			$sql .= ' WHERE (ocedid IN('.$ocedidStr.'))';
-			//echo '<div>'.$sql.'</div>'; exit;
-			$this->conn->query($sql);
+			$this->setEditStatus($idStr, 'omoccuredits', $applyTask, $postArr['rstatus']);
 		}
+		return $status;
+	}
+
+	private function applyOccurrenceEdit($occid, $fieldName, $value, $applyTask){
+		$status = true;
+		$sql = 'UPDATE omoccurrences SET '.$fieldName.' = '.($value !== ''?'"'.$this->cleanInStr($value).'"':'NULL').' WHERE (occid = '.$occid.')';
+		if(!$this->conn->query($sql)){
+			$warningKey = 'ERROR_REVERTING_EDITS';
+			if($applyTask == 'apply') $warningKey = 'ERROR_APPLYING_EDITS';
+			$this->warningArr[$warningKey] = $this->conn->error;
+			$status = false;
+		}
+		return $status;
+	}
+
+	private function applyIdentifierEdits($occid, $fieldName, $oldValue, $newValue, $applyTask){
+		$status = true;
+		$matchValue = $oldValue;
+		$changeValue = $newValue;
+		if($applyTask == 'revert'){
+			$matchValue = $newValue;
+			$changeValue = $oldValue;
+		}
+		$matchTag = '';
+		$changeTag = '';
+		if($p = strpos($matchValue, ':')){
+			$matchTag = substr($matchValue, 0, $p);
+			$matchValue = trim(substr($matchValue, $p + 1));
+		}
+		if($p = strpos($changeValue, ':')){
+			$changeTag = substr($changeValue, 0, $p);
+			$changeValue = trim(substr($changeValue, $p + 1));
+		}
+		$sql = '';
+		$idPK = 0;
+		if($matchValue){
+			$rs = $this->conn->query('SELECT idomoccuridentifiers FROM omoccuridentifiers WHERE (occid = '.$occid.') AND (identifierName = "'.$this->cleanInStr($matchTag).'") AND (identifierValue = "'.$this->cleanInStr($matchValue).'")');
+			if($r = $rs->fetch_object()){
+				$idPK = $r->idomoccuridentifiers;
+			}
+			$rs->free();
+			if($idPK){
+				$sql = 'DELETE FROM omoccuridentifiers ';
+				if($changeValue) $sql = 'UPDATE omoccuridentifiers SET identifierName = "'.$this->cleanInStr($changeTag).'", identifierValue = "'.$this->cleanInStr($changeValue).'" ';
+				$sql .= 'WHERE idomoccuridentifiers = '.$idPK;
+			}
+		}
+		if(!$idPK && $changeValue){
+			$sql = 'INSERT INTO omoccuridentifiers(occid, identifierName, identifierValue, modifiedUid)
+				VALUES('.$occid.', "'.$this->cleanInStr($changeTag).'", "'.$this->cleanInStr($changeValue).'", '.$GLOBALS['SYMB_UID'].') ';
+		}
+		if($sql){
+			if(!$this->conn->query($sql)){
+				$warningKey = 'ERROR_REVERTING_ID';
+				if($applyTask == 'apply') $warningKey = 'ERROR_APPLYING_ID';
+				$this->warningArr[$warningKey] = $this->conn->error;
+				$status = false;
+			}
+		}
+		return $status;
+	}
+
+	private function applyPaleoEdits($occid, $fieldName, $value, $applyTask){
+		$status = true;
+		$sql = 'DELETE FROM omoccurpaleo WHERE (occid = '.$occid.')';
+		if($value) $sql = 'UPDATE omoccurpaleo SET '.$fieldName.' = '.($value !== ''?'"'.$this->cleanInStr($value).'"':'NULL').' WHERE (occid = '.$occid.')';
+		echo '<div>'.$sql.'</div>';
+		if(!$this->conn->query($sql)){
+			$warningKey = 'ERROR_REVERTING_PALEO';
+			if($applyTask == 'apply') $warningKey = 'ERROR_APPLYING_PALEO';
+			$this->warningArr[$warningKey] = $this->conn->error;
+			$status = false;
+		}
+		return $status;
+	}
+
+	private function applyExsiccatiEdits($occid, $fieldName, $value, $applyTask){
+		$status = false;
+
 		return $status;
 	}
 
 	private function updateRevisionRecords($postArr){
 		if(!array_key_exists('id',$postArr)) return false;
-		$status = true;
+		$status = false;
 		$idStr = implode(',',$postArr['id']);
 		if($idStr){
-			//Apply edits
 			$applyTask = $postArr['applytask'];
-			//Apply edits with applied status = 0
-			$sql = 'SELECT occid, newvalues, oldvalues '.
-				'FROM omoccurrevisions '.
-				'WHERE appliedstatus = '.($applyTask == 'apply'?'0':'1').' AND (orid IN('.$idStr.')) ORDER BY initialtimestamp';
-			$rs = $this->conn->query($sql);
-			while($r = $rs->fetch_object()){
-				$dwcArr = json_decode(($applyTask == 'apply')?$r->newvalues:$r->oldvalues);
-				$sqlFrag = '';
-				foreach($dwcArr as $fieldName => $fieldValue){
-					$sqlFrag .= ','.$fieldName.' = '.($fieldValue?'"'.$this->cleanInStr($fieldValue).'"':'NULL').' ';
+			if($applyTask){
+				//Apply edits with applied status = 0
+				$sql = 'SELECT occid, newvalues, oldvalues '.
+					'FROM omoccurrevisions '.
+					'WHERE appliedstatus = '.($applyTask == 'apply'?'0':'1').' AND (orid IN('.$idStr.')) ORDER BY initialtimestamp';
+				$rs = $this->conn->query($sql);
+				while($r = $rs->fetch_object()){
+					$dwcArr = json_decode(($applyTask == 'apply')?$r->newvalues:$r->oldvalues);
+					$sqlFrag = '';
+					foreach($dwcArr as $fieldName => $fieldValue){
+						$sqlFrag .= ','.$fieldName.' = '.($fieldValue?'"'.$this->cleanInStr($fieldValue).'"':'NULL').' ';
+					}
+					$uSql = 'UPDATE omoccurrences SET '.trim($sqlFrag,', ').' WHERE (occid = '.$r->occid.')';
+					//echo '<div>'.$uSql.'</div>'; exit;
+					if($this->conn->query($uSql)){
+						$status = true;
+					}
+					else{
+						$warningKey = 'ERROR_REVERTING_REVISIONS';
+						if($applyTask == 'apply') $warningKey = 'ERROR_APPLYING_REVISIONS';
+						$this->warningArr[$warningKey] = $this->conn->error;
+						$status = false;
+					}
 				}
-				$uSql = 'UPDATE omoccurrences SET '.trim($sqlFrag,', ').' WHERE (occid = '.$r->occid.')';
-				//echo '<div>'.$uSql.'</div>'; exit;
-				if(!$this->conn->query($uSql)){
-					$this->warningArr[] = 'ERROR '.($applyTask == 'apply'?'appplying':'reverting').' revisions: '.$this->conn->error;
-					$status = false;
-				}
+				$rs->free();
 			}
-			$rs->free();
-			//Change status
-			$sql = 'UPDATE omoccurrevisions SET appliedstatus = '.($applyTask=='apply'?1:0);
-			if($postArr['rstatus']){
-				$sql .= ',reviewstatus = '.$postArr['rstatus'];
+			$this->setEditStatus($idStr, 'omoccurrevisions', $applyTask, $postArr['rstatus']);
+		}
+		return $status;
+	}
+
+	private function setEditStatus($idStr, $targetTable, $applyStatus, $reviewStatus){
+		$status = false;
+		$actionArr = array();
+		if($applyStatus){
+			if($applyStatus == 'apply') $applyStatus = 1;
+			else $applyStatus = 0;
+			$actionArr[] = 'appliedstatus = '.$applyStatus;
+		}
+		if(is_numeric($reviewStatus) && $reviewStatus){
+			$actionArr[] = 'reviewstatus = '.$reviewStatus;
+		}
+		if($actionArr){
+			$tablePK = 'ocedid';
+			if($targetTable == 'omoccurrevisions') $tablePK = 'orid';
+			$sql = 'UPDATE '.$targetTable.' SET '.implode(',', $actionArr).' WHERE '.$tablePK.' IN('.$idStr.')';
+			if($this->conn->query($sql)){
+				$status = false;
 			}
-			$sql .= ' WHERE (orid IN('.$idStr.'))';
-			//echo '<div>'.$sql.'</div>'; exit;
-			$this->conn->query($sql);
 		}
 		return $status;
 	}
@@ -316,11 +440,11 @@ class OccurrenceEditReview extends Manager{
 	private function deleteOccurEdits($idStr){
 		$status = true;
 		if(!preg_match('/^[\d,]+$/', $idStr)) return false;
-		$ocedidStr = $this->getFullOcedidStr($idStr);
-		$sql = 'DELETE FROM omoccuredits WHERE (ocedid IN('.$ocedidStr.'))';
+		//$idStr = $this->getFullOcedidStr($idStr);
+		$sql = 'DELETE FROM omoccuredits WHERE (ocedid IN('.$idStr.'))';
 		//echo '<div>'.$sql.'</div>'; exit;
 		if(!$this->conn->query($sql)){
-			$this->errorMessage = 'ERROR deleting edits: '.$this->conn->error;
+			$this->errorMessage = $this->conn->error;
 			$status = false;
 		}
 		return $status;
@@ -332,7 +456,7 @@ class OccurrenceEditReview extends Manager{
 		$sql = 'DELETE FROM omoccurrevisions WHERE (orid IN('.$idStr.'))';
 		//echo '<div>'.$sql.'</div>';
 		if($this->conn->query($sql)){
-			$this->errorMessage = 'ERROR deleting revisions: '.$this->conn->error;
+			$this->errorMessage = $this->conn->error;
 			$status = false;
 		}
 		return $status;
@@ -340,106 +464,82 @@ class OccurrenceEditReview extends Manager{
 
 	public function exportCsvFile($idStr, $exportAll = false){
 		$status = true;
-		if($this->display == 1) $idStr = $this->getFullOcedidStr($idStr);
+		//if($this->display == 1) $idStr = $this->getFullOcedidStr($idStr);
 		//Get Records
 		$sql = '';
 
 		if($this->display == 1){
 			$sql = 'SELECT e.ocedid AS id, o.occid, o.catalognumber, o.dbpk, e.fieldname, e.fieldvaluenew, e.fieldvalueold, e.reviewstatus, e.appliedstatus, '.
 				'CONCAT_WS(", ",u.lastname,u.firstname) AS username, e.initialtimestamp ';
-			if($exportAll){
-				$sql .= $this->getEditSqlBase(true);
-			}
+			if($exportAll) $sql .= $this->getEditSqlBase(true);
 			else{
 				$sql .= 'FROM omoccuredits e INNER JOIN omoccurrences o ON e.occid = o.occid '.
-				'INNER JOIN users u ON e.uid = u.uid '.
-				'WHERE (o.collid = '.$this->collid.') AND (ocedid IN('.$idStr.')) ';
-				if($this->obsUid){
-					$sql .= 'AND (o.observeruid = '.$this->obsUid.') ';
-				}
+					'INNER JOIN users u ON e.uid = u.uid '.
+					'WHERE (o.collid = '.$this->collid.') AND (e.ocedid IN('.$idStr.')) ';
+				if($this->obsUid) $sql .= 'AND (o.observeruid = '.$this->obsUid.') ';
 			}
 			$sql .= 'ORDER BY e.fieldname ASC, e.initialtimestamp DESC';
 		}
 		else{
 			$sql = 'SELECT r.orid AS id, o.occid, o.catalognumber, o.dbpk, r.oldvalues, r.newvalues, r.reviewstatus, r.appliedstatus, '.
 				'r.externaleditor, CONCAT_WS(", ",u.lastname,u.firstname) AS username, r.externaltimestamp, r.initialtimestamp ';
-			if($exportAll){
-				$sql .= $this->getRevisionSqlBase(true);
-			}
+			if($exportAll) $sql .= $this->getRevisionSqlBase(true);
 			else{
 				$sql .= 'FROM omoccurrevisions r INNER JOIN omoccurrences o ON r.occid = o.occid '.
-				'LEFT JOIN users u ON r.uid = u.uid '.
-				'WHERE (o.collid = '.$this->collid.') AND (r.orid IN('.$idStr.')) ';
-				if($this->obsUid){
-					$sql .= 'AND (o.observeruid = '.$this->obsUid.') ';
-				}
+					'LEFT JOIN users u ON r.uid = u.uid '.
+					'WHERE (o.collid = '.$this->collid.') AND (r.orid IN('.$idStr.')) ';
+				if($this->obsUid) $sql .= 'AND (o.observeruid = '.$this->obsUid.') ';
 			}
 			$sql .= 'ORDER BY r.initialtimestamp DESC';
 		}
-		//echo '<div>'.$sql.'</div>'; exit;
+		//echo '<div>field: '.$this->fieldNameFilter.'; export: '.$sql.'</div>'; exit;
 		if($sql){
-			$rs = $this->conn->query($sql);
-			if($rs->num_rows){
-				//Initiate file
-				$fileName = $this->collAcronym.'SpecimenEdits_'.time().".csv";
-				header ('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-				header ('Content-Type: text/csv');
-				header ("Content-Disposition: attachment; filename=\"$fileName\"");
-				$outFH = fopen('php://output', 'w');
-				$headerArr = array("EditId","occid","CatalogNumber","dbpk","ReviewStatus","AppliedStatus","Editor","Timestamp","FieldName","OldValue","NewValue");
-				fputcsv($outFH, $headerArr);
-				while($r = $rs->fetch_object()){
-					$outArr = array(0 => $r->id, 1 => $r->occid, 2 => $r->catalognumber, 3 => $r->dbpk);
-					if($r->reviewstatus == 1){
-						$outArr[4] = 'OPEN';
-					}
-					elseif($r->reviewstatus == 2){
-						$outArr[4] = 'PENDING';
-					}
-					elseif($r->reviewstatus == 3){
-						$outArr[4] = 'CLOSED';
-					}
-					$outArr[5] = ($r->appliedstatus?"APPLIED":"NOT APPLIED");
-					if($this->display == 1) $outArr[6] = $r->username;
-					else  $outArr[6] = $r->externaleditor.($r->username?' ('.$r->username.')':'');
-					if($this->display == 1){
-						$outArr[7] = $r->initialtimestamp;
-						if($r->fieldname == 'footprintwkt') continue;
-						$outArr[8] = $r->fieldname;
-						$outArr[9] = $r->fieldvalueold;
-						$outArr[10] = $r->fieldvaluenew;
+			$rs = $this->conn->query($sql,MYSQLI_USE_RESULT);
+			$fileName = $this->collAcronym.'SpecimenEdits_'.time().'.csv';
+			header ('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+			header ('Content-Type: text/csv');
+			header ('Content-Disposition: attachment; filename="'.$fileName.'"');
+			$outFH = fopen('php://output', 'w');
+			$headerArr = array('EditId','occid','CatalogNumber','dbpk','ReviewStatus','AppliedStatus','Editor','Timestamp','FieldName','OldValue','NewValue');
+			fputcsv($outFH, $headerArr);
+			while($r = $rs->fetch_object()){
+				$outArr = array(0 => $r->id, 1 => $r->occid, 2 => $r->catalognumber, 3 => $r->dbpk);
+				if($r->reviewstatus == 1) $outArr[4] = 'OPEN';
+				elseif($r->reviewstatus == 2) $outArr[4] = 'PENDING';
+				elseif($r->reviewstatus == 3) $outArr[4] = 'CLOSED';
+				$outArr[5] = ($r->appliedstatus?"APPLIED":"NOT APPLIED");
+				if($this->display == 1) $outArr[6] = $r->username;
+				else  $outArr[6] = $r->externaleditor.($r->username?' ('.$r->username.')':'');
+				if($this->display == 1){
+					$outArr[7] = $r->initialtimestamp;
+					if($r->fieldname == 'footprintwkt' && $this->fieldNameFilter != 'footprintwkt') continue;
+					$outArr[8] = $r->fieldname;
+					$outArr[9] = $r->fieldvalueold;
+					$outArr[10] = $r->fieldvaluenew;
+					fputcsv($outFH, $outArr);
+				}
+				else{
+					$outArr[7] = $r->initialtimestamp.($r->externaltimestamp?' ('.$r->externaltimestamp.')':'');
+					$oldValueArr = json_decode($r->oldvalues,true);
+					$newValueArr = json_decode($r->newvalues,true);
+					foreach($oldValueArr as $fieldName => $oldValue){
+						$outArr[8] = $fieldName;
+						$outArr[9] = $oldValue;
+						$outArr[10] = $newValueArr[$fieldName];
 						fputcsv($outFH, $outArr);
 					}
-					else{
-						$outArr[7] = $r->initialtimestamp.($r->externaltimestamp?' ('.$r->externaltimestamp.')':'');
-						$oldValueArr = json_decode($r->oldvalues,true);
-						$newValueArr = json_decode($r->newvalues,true);
-						foreach($oldValueArr as $fieldName => $oldValue){
-							$outArr[8] = $fieldName;
-							$outArr[9] = $oldValue;
-							$outArr[10] = $newValueArr[$fieldName];
-							fputcsv($outFH, $outArr);
-						}
-					}
 				}
-				$rs->free();
-				fclose($outFH);
 			}
-			else{
-				$status = false;
-				$this->errorMessage = "Recordset is empty";
-			}
+			$rs->free();
+			fclose($outFH);
 		}
 		return $status;
 	}
 
 	private function getFullOcedidStr($idStr){
-		//Get ocedid ids (this work around needed until we covert totally to just having omoccurrevisions table
 		$ocedidArr = array();
 		if($idStr){
-			$sql = 'SELECT e.ocedid '.
-				'FROM omoccuredits e INNER JOIN omoccuredits e2 ON e.occid = e2.occid AND e.initialtimestamp = e2.initialtimestamp '.
-				'WHERE e2.ocedid IN('.$idStr.')';
+			$sql = 'SELECT e.ocedid FROM omoccuredits e INNER JOIN omoccuredits e2 ON e.occid = e2.occid AND e.initialtimestamp = e2.initialtimestamp WHERE e2.ocedid IN('.$idStr.')';
 			$rs = $this->conn->query($sql);
 			while($r = $rs->fetch_object()){
 				$ocedidArr[] = $r->ocedid;
@@ -466,6 +566,10 @@ class OccurrenceEditReview extends Manager{
 		if(preg_match('/^[,\d]+$/', $status)){
 			$this->reviewStatusFilter = $status;
 		}
+	}
+
+	public function setFieldNameFilter($f){
+		$this->fieldNameFilter = $f;
 	}
 
 	public function setEditorFilter($f){
@@ -504,6 +608,18 @@ class OccurrenceEditReview extends Manager{
 
 	public function getObsUid(){
 		return $this->obsUid;
+	}
+
+	public function getFieldList(){
+		$retArr = array();
+		$sql = 'SELECT DISTINCT e.fieldName FROM omoccurrences o INNER JOIN omoccuredits e ON o.occid = e.occid WHERE (o.collid = '.$this->collid.') ';
+		$rs = $this->conn->query($sql);
+		while($r = $rs->fetch_object()){
+			$retArr[] = $r->fieldName;
+		}
+		$rs->free();
+		sort($retArr);
+		return $retArr;
 	}
 
 	public function getEditorList(){

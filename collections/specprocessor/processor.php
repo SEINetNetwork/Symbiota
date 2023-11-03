@@ -20,6 +20,8 @@ $procStatus = array_key_exists('procstatus',$_REQUEST)?$_REQUEST['procstatus']:'
 
 $specManager = new SpecProcessorManager();
 $specManager->setCollId($collid);
+// Use ImageMagick, if so configured in symbini.php
+$specManager->setUseImageMagick(isset($USE_IMAGE_MAGICK) && $USE_IMAGE_MAGICK ? $USE_IMAGE_MAGICK : 0);
 
 $isEditor = false;
 if($IS_ADMIN || (array_key_exists("CollAdmin",$USER_RIGHTS) && in_array($collid,$USER_RIGHTS["CollAdmin"]))){
@@ -37,15 +39,7 @@ $statusStr = "";
 	<head>
 		<title>Specimen Processor Control Panel</title>
 		<?php
-		$activateJQuery = true;
-		if(file_exists($SERVER_ROOT.'/includes/head.php')){
-			include_once($SERVER_ROOT.'/includes/head.php');
-		}
-		else{
-			echo '<link href="'.$CLIENT_ROOT.'/css/jquery-ui.css" type="text/css" rel="stylesheet" />';
-			echo '<link href="'.$CLIENT_ROOT.'/css/base.css?ver=1" type="text/css" rel="stylesheet" />';
-			echo '<link href="'.$CLIENT_ROOT.'/css/main.css?ver=1" type="text/css" rel="stylesheet" />';
-		}
+		include_once($SERVER_ROOT.'/includes/head.php');
 		?>
 	</head>
 	<body>
@@ -67,7 +61,7 @@ $statusStr = "";
 				$specManager->setProjVariables($spprid);
 				if($action == 'Process Images'){
 					if($specManager->getProjectType() == 'iplant'){
-						$imageProcessor = new ImageProcessor($specManager->getConn());
+						$imageProcessor = new ImageProcessor();
 						echo '<ul>';
 						$imageProcessor->setLogMode(3);
 						$imageProcessor->setCollid($collid);
@@ -101,36 +95,27 @@ $statusStr = "";
 						if($specManager->getLgMaxFileSize()) $imageProcessor->setLgFileSizeLimit($specManager->getLgMaxFileSize());
 						if($specManager->getJpgQuality()) $imageProcessor->setJpgQuality($specManager->getJpgQuality());
 						$imageProcessor->setUseImageMagick($specManager->getUseImageMagick());
-						$imageProcessor->setWebImg($_POST['webimg']);
-						$imageProcessor->setTnImg($_POST['createtnimg']);
-						$imageProcessor->setLgImg($_POST['createlgimg']);
+						$imageProcessor->setMedProcessingCode($_POST['webimg']);
+						$imageProcessor->setTnProcessingCode($_POST['createtnimg']);
+						$imageProcessor->setLgProcessingCode($_POST['createlgimg']);
 						$imageProcessor->setCreateNewRec($_POST['createnewrec']);
 						$imageProcessor->setImgExists($_POST['imgexists']);
 						$imageProcessor->setKeepOrig(0);
+						$imageProcessor->setCustomStoredProcedure($specManager->getCustomStoredProcedure());
 						$imageProcessor->setSkeletalFileProcessing($_POST['skeletalFileProcessing']);
 
 						//Run process
-						$imageProcessor->batchLoadImages();
+						$imageProcessor->batchLoadSpecimenImages();
 						echo '</div>'."\n";
 					}
 				}
-				elseif($action == 'Process Output File'){
-					//Process iDigBio Image ingestion appliance ouput file
-					$imageProcessor = new ImageProcessor($specManager->getConn());
-					echo '<ul>';
-					$imageProcessor->setLogMode(3);
-					$imageProcessor->setSpprid($spprid);
-					$imageProcessor->setCollid($collid);
-					$imageProcessor->processiDigBioOutput($specManager->getSpecKeyPattern(),$_POST);
-					echo '</ul>';
-
-				}
 				elseif($action == 'mapImageFile'){
 					//Process csv file with remote image urls
-					$imageProcessor = new ImageProcessor($specManager->getConn());
+					$imageProcessor = new ImageProcessor();
 					echo '<ul>';
 					$imageProcessor->setLogMode(3);
 					$imageProcessor->setCollid($collid);
+					if(isset($_POST['createnew']) && $_POST['createnew']) $imageProcessor->setCreateNewRecord(true);
 					$imageProcessor->loadFileData($_POST);
 					echo '</ul>';
 				}
@@ -167,7 +152,7 @@ $statusStr = "";
 			<div style="font-weight:bold;font-size:120%;"><a href="index.php?collid=<?php echo $collid.'&tabindex='.$tabIndex; ?>"><b>Return to Specimen Processor</b></a></div>
 		</div>
 		<?php
-			include($SERVER_ROOT.'/includes/footer.php');
+		include($SERVER_ROOT.'/includes/footer.php');
 		?>
 	</body>
 </html>
