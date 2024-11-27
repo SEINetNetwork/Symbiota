@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-
 <?php
 include_once('../config/symbini.php');
 include_once($SERVER_ROOT.'/classes/GlossaryManager.php');
@@ -7,19 +5,12 @@ if($LANG_TAG == 'en' || !file_exists($SERVER_ROOT.'/content/lang/glossary/index.
 else include_once($SERVER_ROOT.'/content/lang/glossary/index.'.$LANG_TAG.'.php');
 header('Content-Type: text/html; charset=' . $CHARSET);
 
-$glossId = array_key_exists('glossid',$_REQUEST)?$_REQUEST['glossid']:0;
-$language = array_key_exists('searchlanguage',$_REQUEST)?$_REQUEST['searchlanguage']:'';
-$tid = array_key_exists('searchtaxa',$_REQUEST)?$_REQUEST['searchtaxa']:'';
-$searchTerm = array_key_exists('searchterm',$_REQUEST)?$_REQUEST['searchterm']:'';
-$deepSearch = array_key_exists('deepsearch',$_POST)?$_POST['deepsearch']:0;
-$formSubmit = array_key_exists('formsubmit',$_POST)?$_POST['formsubmit']:'';
-
-//Sanitation
-if(!is_numeric($glossId)) $glossId = 0;
-if(!is_numeric($tid)) $tid = 0;
-$language = htmlspecialchars($language, HTML_SPECIAL_CHARS_FLAGS);
-$searchTerm = htmlspecialchars($searchTerm, HTML_SPECIAL_CHARS_FLAGS);
-if(!is_numeric($deepSearch)) $relatedLanguage = 0;
+$glossId = array_key_exists('glossid', $_REQUEST) ? filter_var($_REQUEST['glossid'], FILTER_SANITIZE_NUMBER_INT) : 0;
+$language = array_key_exists('searchlanguage', $_REQUEST) ? htmlspecialchars($_REQUEST['searchlanguage'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
+$tid = array_key_exists('searchtaxa', $_REQUEST) ? filter_var($_REQUEST['searchtaxa'], FILTER_SANITIZE_NUMBER_INT) : 0;
+$searchTerm = array_key_exists('searchterm', $_REQUEST) ? $_REQUEST['searchterm'] : '';
+$deepSearch = array_key_exists('deepsearch', $_POST) ? filter_var($_POST['deepsearch'], FILTER_SANITIZE_NUMBER_INT) : 0;
+$formSubmit = array_key_exists('formsubmit', $_POST) ? $_POST['formsubmit'] : '';
 
 if(!$language) $language = $DEFAULT_LANG;
 if($language == 'en') $language = 'English';
@@ -32,14 +23,14 @@ $glosManager = new GlossaryManager();
 
 $statusStr = '';
 if($formSubmit){
-	if($formSubmit == 'Add Source'){
-		if(!$glosManager->addSource($_POST)) $statusStr = $glosManager->getErrorStr();
+	if($formSubmit == 'addSource'){
+		if(!$glosManager->addSource($_POST)) $statusStr = $glosManager->getErrorMessage();
 	}
 	elseif($formSubmit == 'Edit Source'){
-		if(!$glosManager->editSource($_POST)) $statusStr = $glosManager->getErrorStr();
+		if(!$glosManager->editSource($_POST)) $statusStr = $glosManager->getErrorMessage();
 	}
 	elseif($formSubmit == 'Delete Source'){
-		if(!$glosManager->deleteSource($_POST['tid'])) $statusStr = $glosManager->getErrorStr();
+		if(!$glosManager->deleteSource($_POST['tid'])) $statusStr = $glosManager->getErrorMessage();
 	}
 }
 $languageArr = $glosManager->getLanguageArr();
@@ -49,6 +40,7 @@ unset($languageArr['all']);
 $taxaArr = $glosManager->getTaxaGroupArr();
 $taxonName = ($tid?$taxaArr[$tid]:'');
 ?>
+<!DOCTYPE html>
 <html lang="<?php echo $LANG_TAG ?>">
 <head>
 	<title><?php echo $DEFAULT_TITLE.' '.$LANG['GLOSSARY']; ?></title>
@@ -57,8 +49,8 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 	include_once($SERVER_ROOT.'/includes/head.php');
 	include_once($SERVER_ROOT.'/includes/googleanalytics.php');
 	?>
-	<script type="text/javascript" src="../js/jquery.js"></script>
-	<script type="text/javascript" src="../js/jquery-ui.js"></script>
+	<script src="<?php echo $CLIENT_ROOT; ?>/js/jquery-3.7.1.min.js" type="text/javascript"></script>
+	<script src="<?php echo $CLIENT_ROOT; ?>/js/jquery-ui.min.js" type="text/javascript"></script>
 	<script type="text/javascript">
 		var langArr = {
 			<?php
@@ -123,13 +115,13 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 
 		function openTermPopup(glossid){
 			var urlStr = 'individual.php?glossid='+glossid;
-			newWindow = window.open(urlStr,'popup','toolbar=0,status=1,scrollbars=1,width=900,height=450,left=20,top=20');
+			newWindow = window.open(urlStr,'popup','toolbar=0,status=1,scrollbars=1,width=1100,height=550,left=20,top=20');
 			if (newWindow.opener == null) newWindow.opener = self;
 			return false;
 		}
 
 	</script>
-	<script src="../js/symb/glossary.index.js?ver=20160720" type="text/javascript"></script>
+	<script src="../js/symb/glossary.index.js?ver=2" type="text/javascript"></script>
 </head>
 <body>
 	<?php
@@ -141,7 +133,7 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 		<a href='index.php'> <b><?php echo (isset($LANG['GLOSSARY'])?$LANG['GLOSSARY']:'Glossary'); ?></b></a>
 	</div>
 	<!-- This is inner text! -->
-	<div id="innertext">
+	<div role="main" id="innertext">
 		<?php
 		if($statusStr){
 			?>
@@ -176,14 +168,14 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 						<a href='glossaryloader.php'>Batch Upload Terms</a>
 						 -->
 					</div>
-					<?php
-				}
-				?>
-				<div>
+					<div>
 					<a title="Show download options" onclick="toggle('downloadoptionsdiv');return false;">
 						<?php echo (isset($LANG['DOWN_OP'])?$LANG['DOWN_OP']:'Download Options'); ?>
 					</a>
-				</div>
+					</div>
+				<?php
+				}
+				?>
 			</div>
 			<div id="downloadoptionsdiv" style="display:none;clear:both;float:right;margin-top:15px;background-color:white;">
 				<form name="downloadform" action="glossdocexport.php" method="post" onsubmit="return verifyDownloadForm(this);">
@@ -235,7 +227,7 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 						<div style="clear:both;padding:15px">
 							<input name="searchlanguage" type="hidden" value="<?php echo $language; ?>" />
 							<input name="searchtaxa" type="hidden" value="<?php echo $tid; ?>" />
-							<input name="searchterm" type="hidden" value="<?php echo $searchTerm; ?>" />
+							<input name="searchterm" type="hidden" value="<?php echo htmlspecialchars($searchTerm, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE); ?>" />
 							<input name="deepsearch" type="hidden" value="<?php echo $deepSearch; ?>" />
 							<button name="formsubmit" type="submit" value="Download"><?php echo (isset($LANG['DOWNLOAD'])?$LANG['DOWNLOAD']:'Download'); ?></button>
 						</div>
@@ -243,10 +235,13 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 				</form>
 			</div>
 		</div>
-		<h2><?php echo (isset($LANG['SEARCH_GL'])?$LANG['SEARCH_GL']:'Search/Browse Glossary'); ?></h2>
+		<h1 class="page-heading"><?php echo (isset($LANG['SEARCH_GL'])?$LANG['SEARCH_GL']:'Search/Browse Glossary'); ?></h1>
 		<div style="float:left;">
 			<form id="searchform" name="searchform" action="index.php" method="post" onsubmit="return verifySearchForm(this);">
 				<div style="height:25px;">
+					<div style="float:left;">
+						<b><?= (isset($LANG['PLEASE'])?$LANG['PLEASE']:'Please') . ' ' . "<a href=" . $CLIENT_ROOT . "/includes/usagepolicy.php" . ">" . (isset($LANG['CITE_GLOSSARY'])?$LANG['CITE_GLOSSARY']:'cite this glossary') . "</a>"; ?></b>
+					</div>
 					<?php
 					if($taxaArr){
 						?>
@@ -280,8 +275,8 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 					?>
 				</div>
 				<div style="clear:both;">
-					<label for="searchterm"><?php echo (isset($LANG['SEARCH_TERM'])?$LANG['SEARCH_TERM']:'Search Term'); ?>:</label>
-					<input id="searchterm" type="text" autocomplete="off" name="searchterm" size="25" value="<?php echo $searchTerm; ?>" />
+					<b><?php echo (isset($LANG['SEARCH_TERM'])?$LANG['SEARCH_TERM']:'Search Term'); ?>:</b>
+					<input type="text" autocomplete="off" name="searchterm" size="25" value="<?php echo htmlspecialchars($searchTerm, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE); ?>" />
 				</div>
 				<div style="margin-left:40px">
 					<input id="deepsearch" name="deepsearch" type="checkbox" value="1" <?php echo $deepSearch?'checked':''; ?> />
@@ -303,10 +298,9 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 						$title = $LANG['TERMS'];
 						if($taxonName) $title .= ' '.$LANG['FOR'].' '.$taxonName;
 						if($language) $title .= ' '.$LANG['IN'].' '.$language;
-						if($searchTerm) $title .= ' '.$LANG['KEYWORD'].' &quot;'.$searchTerm.'&quot;';
+						if($searchTerm) $title .= ' '.$LANG['KEYWORD'].' &quot;'.htmlspecialchars($searchTerm, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE).'&quot;';
 						echo '<div style="float:left;font-weight:bold;font-size:120%;">'.$title.'</div>';
-						$sourceArrFull = $glosManager->getTaxonSources($tid);
-						$sourceArr = current($sourceArrFull);
+						$sourceArr = $glosManager->getTaxonSources($tid);
 						if($sourceArr){
 							?>
 							<div style="float:left;margin-left:5px;">
@@ -317,10 +311,10 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 							<?php
 						}
 						else{
-							if($isEditor){
+							if($isEditor && $tid){
 								?>
 								<div style="float:left;margin-left:5px;">
-									(<a href="sources.php?emode=1&tid=<?php echo $tid.'&searchterm='.$searchTerm.'&language='.$language.'&taxa='.$tid; ?>"><?php echo $LANG['ADD_SRC']; ?></a>)
+									(<a href="sources.php?emode=1&tid=<?php echo $tid.'&searchterm='.htmlspecialchars($searchTerm, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE).'&language='.$language; ?>"><?php echo (isset($LANG['ADD_SRC'])?$LANG['ADD_SRC']:'Add Sources'); ?></a>)
 								</div>
 								<?php
 							}
@@ -332,42 +326,52 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 						?>
 						<div id="sourcesdiv" style="display:none;padding:5px">
 							<fieldset style="margin:15px;padding:20px;">
-								<legend><b><?php echo (isset($LANG['TAX_CONTR'])?$LANG['TAX_CONTR']:'Contributors for Taxonomic Group'); ?></b></legend>
+								<legend><b><?= $LANG['TAX_CONTR'] ?></b></legend>
 								<?php
-								if($isEditor){
-									?>
-									<div style="float:right;">
-										<a href="sources.php?emode=1&tid=<?php echo htmlspecialchars($tid, HTML_SPECIAL_CHARS_FLAGS) . '&searchterm=' . htmlspecialchars($searchTerm, HTML_SPECIAL_CHARS_FLAGS) . '&language=' . htmlspecialchars($language, HTML_SPECIAL_CHARS_FLAGS) . '&taxa=' . htmlspecialchars($tid, HTML_SPECIAL_CHARS_FLAGS); ?>"><img src="../images/edit.png" style="width:13px" /></a>
-									</div>
-									<?php
-								}
-								if($sourceArr['contributorTerm']){
+								$sourceDelimiter = '';
+								foreach($sourceArr as $sourceTid => $sourceObj){
+									echo $sourceDelimiter;
+									if($isEditor){
+										?>
+										<div style="float:right;">
+											<a href="sources.php?emode=1&tid=<?= $sourceTid.'&searchterm='.htmlspecialchars($searchTerm, HTML_SPECIAL_CHARS_FLAGS).'&language='.$language; ?>"><img src="../images/edit.png" style="width:13px"></a>
+										</div>
+										<?php
+									}
 									?>
 									<div style="">
-										<?php echo '<b>'.(isset($LANG['TERM_CONTR'])?$LANG['TERM_CONTR']:'Terms and Definitions contributed by').':</b> '.$sourceArr['contributorTerm']; ?>
+										<?= '<b>' . $LANG['SOURCE_SCINAME'] . ':</b> ' . $sourceObj['sciname'] ?>
 									</div>
 									<?php
-								}
-								if($sourceArr['contributorImage']){
-									?>
-									<div style="margin-top:8px;">
-										<?php echo '<b>'.(isset($LANG['IMG_CONTR'])?$LANG['IMG_CONTR']:'Images contributed by').':</b> '.$sourceArr['contributorImage']; ?>
-									</div>
-									<?php
-								}
-								if($sourceArr['translator']){
-									?>
-									<div style="margin-top:8px;">
-										<?php echo '<b>'.(isset($LANG['TRANS_BY'])?$LANG['TRANS_BY']:'Translations by').':</b> '.$sourceArr['translator']; ?>
-									</div>
-									<?php
-								}
-								if($sourceArr['additionalSources']){
-									?>
-									<div style="margin-top:8px;">
-										<?php echo '<b>'.(isset($LANG['TRAN_IMG_BY'])?$LANG['TRAN_IMG_BY']:'Translations and images were also sourced from the following references').':</b> '.$sourceArr['additionalSources']; ?>
-									</div>
-									<?php
+									if($sourceObj['contributorTerm']){
+										?>
+										<div style="margin-top:8px;">
+											<?= '<b>' .$LANG['TERM_CONTR'] . ':</b> ' . $sourceObj['contributorTerm'] ?>
+										</div>
+										<?php
+									}
+									if($sourceObj['contributorImage']){
+										?>
+										<div style="margin-top:8px;">
+											<?= '<b>' . $LANG['IMG_CONTR'] . ':</b> ' . $sourceObj['contributorImage'] ?>
+										</div>
+										<?php
+									}
+									if($sourceObj['translator']){
+										?>
+										<div style="margin-top:8px;">
+											<?= '<b>' . $LANG['TRANS_BY'] . ':</b> ' . $sourceObj['translator'] ?>
+										</div>
+										<?php
+									}
+									if($sourceObj['additionalSources']){
+										?>
+										<div style="margin-top:8px;">
+											<?= '<b>' . $LANG['TRAN_IMG_BY'] . ':</b> ' . $sourceObj['additionalSources'] ?>
+										</div>
+										<?php
+									}
+									$sourceDelimiter = '<div style="padding: 5px 0px"><hr></div>';
 								}
 								?>
 							</fieldset>
@@ -375,10 +379,17 @@ $taxonName = ($tid?$taxaArr[$tid]:'');
 						<?php
 					}
 					echo '<div style="padding:10px;"><ul>';
-					foreach($termList as $glossId => $termName){
-						echo '<li>';
-						echo '<a onclick="openTermPopup(' . htmlspecialchars($glossId, HTML_SPECIAL_CHARS_FLAGS) . '); return false;"><b>' . htmlspecialchars($termName, HTML_SPECIAL_CHARS_FLAGS) . '</b></a>';
-						echo '</li>';
+					foreach($termList as $termArr){
+						foreach($termArr as $glossId => $termObj){
+							$termDisplay = '<a href="#" onclick="openTermPopup('.$glossId.'); return false;">'.$termObj['d'].'</a>';
+							if(isset($termObj['goto'])){
+								$gotoArr = $termObj['goto'];
+								$termDisplay = $termObj['d'].' &equals;&gt; <a href="#" onclick="openTermPopup('.key($gotoArr).'); return false;">'.current($gotoArr).'</a>';
+							}
+							echo '<li>';
+							echo $termDisplay;
+							echo '</li>';
+						}
 					}
 					echo '</ul></div>';
 				}

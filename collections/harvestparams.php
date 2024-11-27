@@ -7,18 +7,21 @@ header("Content-Type: text/html; charset=".$CHARSET);
 
 $collManager = new OccurrenceManager();
 $searchVar = $collManager->getQueryTermStr();
+$SHOULD_INCLUDE_CULTIVATED_AS_DEFAULT = $SHOULD_INCLUDE_CULTIVATED_AS_DEFAULT ?? false;
+
 ?>
-<html>
+<!DOCTYPE html>
+<html lang="<?php echo $LANG_TAG ?>">
 <head>
 	<title><?php echo $DEFAULT_TITLE.' '.$LANG['PAGE_TITLE']; ?></title>
 	<?php
 	include_once($SERVER_ROOT.'/includes/head.php');
     include_once($SERVER_ROOT.'/includes/googleanalytics.php');
     ?>
-	<script src="../js/jquery-3.2.1.min.js?ver=3" type="text/javascript"></script>
-	<script src="../js/jquery-ui/jquery-ui.min.js?ver=3" type="text/javascript"></script>
-	<link href="../js/jquery-ui/jquery-ui.min.css" type="text/css" rel="Stylesheet" />
-	<script src="../js/symb/collections.harvestparams.js?ver=2" type="text/javascript"></script>
+	<link href="<?php echo $CSS_BASE_PATH; ?>/jquery-ui.css" type="text/css" rel="stylesheet">
+	<script src="<?php echo $CLIENT_ROOT; ?>/js/jquery-3.7.1.min.js" type="text/javascript"></script>
+	<script src="<?php echo $CLIENT_ROOT; ?>/js/jquery-ui.min.js" type="text/javascript"></script>
+	<script src="../js/symb/collections.harvestparams.js?ver=3" type="text/javascript"></script>
 	<script src="../js/symb/collections.traitsearch.js?ver=8" type="text/javascript"></script> <!-- Contains search-by-trait modifications -->
 	<script src="../js/symb/wktpolygontools.js?ver=1c" type="text/javascript"></script>
 	<script type="text/javascript">
@@ -37,10 +40,12 @@ $searchVar = $collManager->getQueryTermStr();
 	<script src="../js/symb/api.taxonomy.taxasuggest.js?ver=4" type="text/javascript"></script>
 	<style type="text/css">
 		hr{ clear:both; margin: 10px 0px }
+		button{ margin: 2px }
+		select{ margin-bottom: 4px }
 		.catHeaderDiv { font-weight:bold; font-size: 18px }
 		.coordBoxDiv { float:left; border:2px solid brown; padding:10px; margin:5px; white-space: nowrap; }
 		.coordBoxDiv .labelDiv { font-weight:bold;float:left }
-		.coordBoxDiv .iconDiv { float:right;margin-left:5px; }
+		.coordBoxDiv .iconDiv { float: left; margin-left: 5px; }
 		.coordBoxDiv .iconDiv img { width:18px; }
 		.coordBoxDiv .elemDiv { clear:both; }
 	</style>
@@ -60,14 +65,15 @@ $searchVar = $collManager->getQueryTermStr();
 	else{
 		?>
 		<div class='navpath'>
-			<a href="../index.php"><?php echo htmlspecialchars($LANG['NAV_HOME'], HTML_SPECIAL_CHARS_FLAGS); ?></a> &gt;&gt;
-			<a href="index.php"><?php echo htmlspecialchars($LANG['NAV_COLLECTIONS'], HTML_SPECIAL_CHARS_FLAGS); ?></a> &gt;&gt;
+			<a href="../index.php"><?php echo htmlspecialchars($LANG['NAV_HOME'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE); ?></a> &gt;&gt;
+			<a href="index.php"><?php echo htmlspecialchars($LANG['NAV_COLLECTIONS'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE); ?></a> &gt;&gt;
 			<b><?php echo $LANG['NAV_SEARCH']; ?></b>
 		</div>
 		<?php
 	}
 	?>
-	<div id="innertext">
+	<div role="main" id="innertext">
+		<h1 class="page-heading bottom-breathing-room-rel top-breathing-room-rel">Search</h1>
 		<form name="harvestparams" id="harvestparams" action="list.php" method="post" onsubmit="return checkHarvestParamsForm(this)">
 			<hr/>
 			<div>
@@ -142,7 +148,7 @@ $searchVar = $collManager->getQueryTermStr();
 						<?php echo $LANG['LL_BOUND_TEXT']; ?>
 					</div>
 					<div class="iconDiv">
-						<a href="#" onclick="openCoordAid('rectangle');return false;"><img src="../images/map.png" title="<?php echo htmlspecialchars((isset($LANG['MAP_AID'])?$LANG['MAP_AID']:'Mapping Aid'), HTML_SPECIAL_CHARS_FLAGS); ?>" /></a>
+						<a href="#" onclick="openCoordAid('rectangle');return false;"><img src="../images/map.png" title="<?php echo htmlspecialchars((isset($LANG['MAP_AID'])?$LANG['MAP_AID']:'Mapping Aid'), ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE); ?>" /></a>
 					</div>
 					<div class="elemDiv">
 						<div>
@@ -190,7 +196,7 @@ $searchVar = $collManager->getQueryTermStr();
 						</label>
 					</div>
 					<div class="iconDiv">
-						&nbsp;<a href="#" onclick="openCoordAid('polygon');return false;"><img src="../images/map.png" title="<?php echo htmlspecialchars((isset($LANG['MAP_AID'])?$LANG['MAP_AID']:'Mapping Aid'), HTML_SPECIAL_CHARS_FLAGS); ?>" /></a>
+						&nbsp;<a href="#" onclick="openCoordAid('polygon');return false;"><img src="../images/map.png" title="<?php echo htmlspecialchars((isset($LANG['MAP_AID'])?$LANG['MAP_AID']:'Mapping Aid'), ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE); ?>" /></a>
 					</div>
 					<div class="elemDiv">
 						<textarea id="footprintwkt" name="footprintwkt" onchange="this.value = validatePolygon(this.value)" style="zIndex:999;width:100%;height:90px"></textarea>
@@ -208,8 +214,6 @@ $searchVar = $collManager->getQueryTermStr();
 							<div>
 								<label for="pointlat"><?php echo $LANG['LL_P-RADIUS_LAT']; ?>:</label>
 								<input type="text" id="pointlat" name="pointlat" size="7" value="" onchange="cleanNumericInput(this);">
-							</div>
-							<div>
 								<label for="pointlat_NS"><?php echo $LANG['DIRECTION'] ?>:</label>
 								<select id="pointlat_NS" name="pointlat_NS">
 									<option id="N" value="N"><?php echo $LANG['LL_N_SYMB']; ?></option>
@@ -221,8 +225,6 @@ $searchVar = $collManager->getQueryTermStr();
 							<div>
 								<label for="pointlong"><?php echo $LANG['LL_P-RADIUS_LNG']; ?>:</label>
 								<input type="text" id="pointlong" name="pointlong" size="7" value="" onchange="cleanNumericInput(this);">
-							</div>
-							<div>
 								<label for="pointlong_EW"><?php echo $LANG['DIRECTION'] ?>:</label>
 								<select id="pointlong_EW" name="pointlong_EW">
 									<option id="W" value="W"><?php echo $LANG['LL_W_SYMB']; ?></option>
@@ -277,6 +279,24 @@ $searchVar = $collManager->getQueryTermStr();
 					<input name="includeothercatnum" id="includeothercatnum" type="checkbox" value="1" checked />
 					<label for="includeothercatnum"><?php echo $LANG['INCLUDE_OTHER_CATNUM']?></label>
 				</div>
+				<?php
+				if($matSampleTypeArr = $collManager->getMaterialSampleTypeArr()){
+					?>
+					<div>
+						<label for="materialsampletype"><?= $LANG['MATERIAL_SAMPLE_TYPE'] ?></label>
+						<select name="materialsampletype" id="materialsampletype">
+							<option value="">---------------</option>
+							<option value="all-ms"><?= $LANG['ALL_MATERIAL_SAMPLE'] ?></option>
+							<?php
+							foreach($matSampleTypeArr as $matSampeType){
+								echo '<option value="' . $matSampeType . '">' . $matSampeType . '</option>';
+							}
+							?>
+						</select>
+					</div>
+					<?php
+				}
+				?>
 				<div>
 					<input type='checkbox' name='typestatus' id='typestatus' value='1' />
 					<label for="typestatus"><?php echo isset($LANG['TYPE'])?$LANG['TYPE']:'Limit to Type Specimens Only'; ?></label>
@@ -294,7 +314,7 @@ $searchVar = $collManager->getQueryTermStr();
 					<label for="hascoords"><?php echo isset($LANG['HAS_COORDS'])?$LANG['HAS_COORDS']:'Limit to Specimens with Geocoordinates Only'; ?></label>
 				</div>
 				<div>
-					<input type='checkbox' name='includecult' id='includecult' value='1' />
+					<input type='checkbox' name='includecult' id='includecult' value='1' <?php echo $SHOULD_INCLUDE_CULTIVATED_AS_DEFAULT ? 'checked' : '' ?> />
 					<label for="includecult"><?php echo isset($LANG['INCLUDE_CULTIVATED'])?$LANG['INCLUDE_CULTIVATED']:'Include cultivated/captive occurrences'; ?></label>
 				</div>
 			</div>
@@ -319,8 +339,8 @@ $searchVar = $collManager->getQueryTermStr();
 									<legend><b>Trait: <?php echo $traitData['name']; ?></b></legend>
 									<div style="float:right">
 										<div class="trianglediv" style="margin:4px 3px;float:right;cursor:pointer" onclick="setAttributeTree(this)" title="Toggle attribute tree open/close">
-											<img class="triangleright" src="../images/triangleright.png" style="display:none" />
-											<img class="triangledown" src="../images/triangledown.png" style="" />
+											<img class="triangleright" src="../images/triangleright.png" style="width:1.3em;display:none" />
+											<img class="triangledown" src="../images/triangledown.png" style="width:1.3em;" />
 										</div>
 									</div>
 									<div class="traitDiv" style="margin-left:5px;float:left">
@@ -342,6 +362,7 @@ $searchVar = $collManager->getQueryTermStr();
 				<div><button type="reset" style="width:100%" onclick="resetHarvestParamsForm()"><?php echo isset($LANG['BUTTON_RESET'])?$LANG['BUTTON_RESET']:'Reset Form'; ?></button></div>
 			</div>
 			<div>
+				<input name="comingFrom" type="hidden" value="harvestparams" >
 				<input type="hidden" name="reset" value="1" />
 				<input type="hidden" name="db" value="<?php echo $collManager->getSearchTerm('db'); ?>" />
 			</div>

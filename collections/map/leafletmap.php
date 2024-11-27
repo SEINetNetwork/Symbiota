@@ -1,6 +1,11 @@
 <?php
 include_once('../../config/symbini.php');
 include_once($SERVER_ROOT.'/classes/OccurrenceMapManager.php');
+include_once($SERVER_ROOT.'/content/lang/collections/map/simplemap.'.$LANG_TAG.'.php');
+if($LANG_TAG != 'en' && file_exists($SERVER_ROOT.'/content/lang/collections/map/leafletmap.' . $LANG_TAG . '.php')) include_once($SERVER_ROOT.'/content/lang/collections/map/leafletmap.' . $LANG_TAG . '.php');
+else include_once($SERVER_ROOT . '/content/lang/collections/map/leafletmap.en.php');
+
+
 header("Content-Type: text/html; charset=".$CHARSET);
 
 $clid = array_key_exists('clid',$_REQUEST)?$_REQUEST['clid']:0;
@@ -108,9 +113,10 @@ if(isset($MAPPING_BOUNDARIES)){
    }
 }
 ?>
-<html>
+<!DOCTYPE html>
+<html lang="<?php echo $LANG_TAG ?>">
 <head>
-	<title><?php echo $DEFAULT_TITLE; ?> - Google Map</title>
+	<title><?php echo $DEFAULT_TITLE; ?> - <?php echo $LANG['LEAFLET_MAP']; ?></title>
 	<?php
 	   include_once($SERVER_ROOT.'/includes/head.php');
 	   include_once($SERVER_ROOT.'/includes/leafletMap.php');
@@ -216,7 +222,7 @@ if(isset($MAPPING_BOUNDARIES)){
             colorLegend = JSON.parse(data.getAttribute('data-legend'))
             clid = JSON.parse(data.getAttribute('data-clid'))
          } catch (err) {
-            alert("Failed to load occurence data")
+            alert("<?php echo $LANG['FAILED_TO_LOAD_OCCR_DATA']; ?>")
          }
          //Keeping Google and leaflet files seperate for sake of saving repeat
          //work when trying to move away from google maps.
@@ -250,12 +256,12 @@ if(isset($MAPPING_BOUNDARIES)){
 			}
 
 			if(lat === null && lng === null){
-				window.alert("Enter values in the latitude and longitude fields");
+				window.alert("<?php echo $LANG['ENTER_VALUES_IN_LAT_LONG']; ?>");
          } else if(lat < -180 || lat > 180 || lng < -180 || lng > 180) {
-					window.alert("Latitude and Longitude must be of values between -180 and 180 (" + lat + ";" + lng + ")");
+					window.alert("<?php echo $LANG['LAT_LONG_MUST_BE_BETWEEN_VALUES']; ?> (" + lat + ";" + lng + ")");
          } else {
             var addPoint = true;
-            if(lng > 0) addPoint = window.confirm("Longitude is positive, which will put the marker in the eastern hemisphere (e.g. Asia).\nIs this what you want?");
+            if(lng > 0) addPoint = window.confirm("<?php echo $LANG['LONGITUDE_IS_POSITIVE']; ?>?");
             if(!addPoint) lng = -1*lng;
 
             map.mapLayer.addLayer(
@@ -295,20 +301,21 @@ if(isset($MAPPING_BOUNDARIES)){
 	</script>
 </head>
 <body style="width:100%; min-width: 900px" onload="initialize();">
+   <h1 class="page-heading screen-reader-only">Leaflet Map</h1>
 	<?php
 	if(!$coordArr){
 		?>
 			<div style="font-size:120%;font-weight:bold;">
-				Your query apparently does not contain any records with coordinates that can be mapped.
+            <?php echo $LANG['QUERY_DOES_NOT_CONTAIN_RECORDS']; ?>.
 			</div>
 			<div style="margin-left:20px;">
-				Either the records in the query are not georeferenced (no lat/long)<br/>
+				<?php echo $LANG['EITHER_REC_NOT_GEOREF']; ?><br/>
 			</div>
 			<div style="margin-left:100px;">
-				-or-
+				-<?php echo $LANG['OR']; ?>-
 			</div>
 			<div style="margin-left:20px;">
-				Rare/threatened status requires the locality coordinates be hidden.
+				<?php echo $LANG['RARE_STATUS_REQUIRES']; ?>.
 			</div>
 		<?php
 	}
@@ -321,7 +328,9 @@ if(isset($MAPPING_BOUNDARIES)){
 	<div id="map_canvas" style="width:100%;height:80vh"></div>
 	<div style="width:500px;float:left;">
 		<fieldset>
-			<legend>Legend</legend>
+            <legend>
+               <?php echo (isset($LANG['LEGEND']) ? $LANG['LEGEND']: 'Legend') ?>
+            </legend>
 			<div style="float: left; margin-right: 25px; margin-bottom: 10px">
 				<?php
 				$tailItem = '';
@@ -349,65 +358,82 @@ if(isset($MAPPING_BOUNDARIES)){
 						<g>
 							<circle cx="7.5" cy="7.5" r="7" fill="white" stroke="#000000" stroke-width="1px" ></circle>
 						</g>
-					</svg> = Collection
+                  </svg> = 
+                  <?php echo (isset($LANG['COLLECTION']) ? $LANG['COLLECTION']: 'Collection') ?>
 				</div>
 				<div>
 					<svg style="height:14px;width:14px;margin-bottom:-2px;">" xmlns="http://www.w3.org/2000/svg">
 						<g>
 							<path stroke="#000000" d="m6.70496,0.23296l-6.70496,13.48356l13.88754,0.12255l-7.18258,-13.60611z" stroke-width="1px" fill="white"/>
 						</g>
-					</svg> = Observation
+					</svg> = 
+               <?php echo (isset($LANG['OBSERVATION']) ? $LANG['OBSERVATION']: 'Observation') ?>
 				</div>
 			</div>
 		</fieldset>
 	</div>
 	<div style="width:400px;float:left;">
 		<fieldset>
-			<legend>Add Point of Reference</legend>
+            <legend>
+               <?php echo (isset($LANG['ADD_REFERENCE_POINT']) ? $LANG['ADD_REFERENCE_POINT']: 'Add Point of Reference') ?>
+            </legend>
 			<div>
 				<div>
-					Marker Name: <input name='title' id='title' size='15' type='text' />
+               <?php echo (isset($LANG['MARKER_NAME']) ? $LANG['MARKER_NAME']: 'Marker Name') ?>:
+					<input name='title' id='title' size='15' type='text' />
 				</div>
 				<div class="latlongdiv">
 					<div>
-						<div style="float:left;margin-right:5px">Latitude decimal: <input name='lat' id='lat' size='10' type='text' /> </div>
+                     <div style="float:left;margin-right:5px">
+                        <?php echo (isset($LANG['LATITUDE']) ? $LANG['LATITUDE']: 'Longitude') ?>
+                        (<?php echo (isset($LANG['DECIMAL']) ? $LANG['DECIMAL']: 'Decimal') ?>):
+                        <input name='lat' id='lat' size='10' type='text' /> </div>
 						<div style="float:left;">eg: 34.57</div>
 					</div>
 					<div style="margin-top:5px;clear:both">
-						<div style="float:left;margin-right:5px">Longitude decimal: <input name='lng' id='lng' size='10' type='text' /> </div>
+                     <div style="float:left;margin-right:5px">
+                        <?php echo (isset($LANG['LONGITUDE']) ? $LANG['LONGITUDE']: 'Longitude') ?>
+                        (<?php echo (isset($LANG['DECIMAL']) ? $LANG['DECIMAL']: 'Decimal') ?>):
+                        <input name='lng' id='lng' size='10' type='text' /> </div>
 						<div style="float:left;">eg: -112.38</div>
 					</div>
 					<div style='font-size:80%;margin-top:5px;clear:both'>
-						<a href='#' onclick='toggleLatLongDivs();'>Enter in D:M:S format</a>
+                     <a href='#' onclick='toggleLatLongDivs();'> 
+                        <?php echo (isset($LANG['ENTER_IN_DMS']) ? $LANG['ENTER_IN_DMS']: 'Enter in D:M:S format') ?>
+                     </a>
 					</div>
 				</div>
 				<div class='latlongdiv' style='display:none;clear:both'>
 					<div>
-						Latitude:
+                  <?php echo (isset($LANG['LATITUDE']) ? $LANG['LATITUDE']: 'Latitude') ?>:
 						<input name='latdeg' id='latdeg' size='2' type='text' />&deg;
 						<input name='latmin' id='latmin' size='4' type='text' />&prime;
 						<input name='latsec' id='latsec' size='4' type='text' />&Prime;
 						<select name='latns' id='latns'>
-							<option value='N'>N</option>
-							<option value='S'>S</option>
+							<option value='N'><?php echo $LANG['NORTH']; ?></option>
+							<option value='S'><?php echo $LANG['SOUTH']; ?></option>
 						</select>
 					</div>
 					<div style="margin-top:5px;">
-						Longitude:
+                  <?php echo (isset($LANG['LONGITUDE']) ? $LANG['LONGITUDE']: 'Longitude') ?>:
 						<input name='longdeg' id='longdeg' size='2' type='text' />&deg;
 						<input name='longmin' id='longmin' size='4' type='text' />&prime;
 						<input name='longsec' id='longsec' size='4' type='text' />&Prime;
 						<select name='longew' id='longew'>
-							<option value='E'>E</option>
-							<option value='W' selected>W</option>
+							<option value='E'><?php echo $LANG['EAST']; ?></option>
+							<option value='W' selected><?php echo $LANG['WEST']; ?></option>
 						</select>
 					</div>
 					<div style='font-size:80%;margin-top:5px;'>
-						<a href='#' onclick='toggleLatLongDivs();'>Enter in Decimal format</a>
+                     <a href='#' onclick='toggleLatLongDivs();'>
+                        <?php echo (isset($LANG['ENTER_IN_DECIMAL']) ? $LANG['ENTER_IN_DECIMAL']: 'Enter in decimal format') ?>
+                     </a>
 					</div>
 				</div>
 				<div style="margin-top:10px;">
-					<input type='submit' value='Add Marker' onclick='addRefPoint();' />
+               <button onclick='addRefPoint();'>
+                  <?php echo (isset($LANG['ADD_MARKER']) ? $LANG['ADD_MARKER']: 'Add Marker') ?>
+               </button>
 				</div>
 			</div>
 		</fieldset>

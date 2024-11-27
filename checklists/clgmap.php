@@ -1,27 +1,25 @@
 <?php
 include_once('../config/symbini.php');
 include_once($SERVER_ROOT.'/classes/ChecklistManager.php');
-@include_once($SERVER_ROOT.'/content/lang/header.'.$LANG_TAG.'.php');
+if($LANG_TAG == 'en' || !file_exists($SERVER_ROOT.'/content/lang/checklists/clgmap.' . $LANG_TAG . '.php')) include_once($SERVER_ROOT . '/content/lang/checklists/clgmap.en.php');
+else include_once($SERVER_ROOT.'/content/lang/checklists/clgmap.' . $LANG_TAG . '.php');
 header("Content-Type: text/html; charset=".$CHARSET);
 
-$pid = $_REQUEST['pid'];
-$target = array_key_exists('target',$_REQUEST)?$_REQUEST['target']:'checklists';
-
-//Sanitation
-$pid = htmlspecialchars($pid, HTML_SPECIAL_CHARS_FLAGS);
-if(!is_numeric($pid)) $pid = 0;
+$pid = filter_var($_REQUEST['pid'], FILTER_SANITIZE_NUMBER_INT);
 
 $clManager = new ChecklistManager();
 $clManager->setProj($pid);
+
+$shouldUseMinimalMapHeader = $SHOULD_USE_MINIMAL_MAP_HEADER ?? false;
 ?>
-<html>
+<!DOCTYPE html>
+<html lang="<?php echo $LANG_TAG ?>">
    <head>
-      <?php 
-        include_once($SERVER_ROOT.'/includes/leafletMap.php');
-	     include_once($SERVER_ROOT.'/includes/googleMap.php');
-      ?>
-		<title><?php echo $DEFAULT_TITLE.' - '.(isset($LANG['H_INVENTORIES'])?$LANG['H_INVENTORIES']:'Species Checklists'); ?></title>
-		<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+		<?php
+		include_once($SERVER_ROOT.'/includes/leafletMap.php');
+		include_once($SERVER_ROOT.'/includes/googleMap.php');
+		?>
+		<title><?= $DEFAULT_TITLE . ' - ' . $LANG['TITLE'] ?></title>
 
 		<script type="text/javascript">
 
@@ -29,7 +27,7 @@ $clManager->setProj($pid);
          let checklists;
          let pid;
 
-         function navigateToCheckList(clid, pid) { 
+         function navigateToCheckList(clid, pid) {
             window.location.href = `../ident/key.php?clid=${clid}&pid=${pid}&taxon=All+Species`;
          }
 
@@ -43,7 +41,7 @@ $clManager->setProj($pid);
                markers.push(L.marker(latlng)
                   .bindTooltip(checklist.name)
                   .bindPopup(`<div style=\'width:300px;\'>
-                     <b>${checklist.name}</b><br/>Double Click to open
+                     <b>${checklist.name}</b><br/><?= $LANG['DOUBLE_CLICK'] ?>
                      </div>`)
                   .on('dblclick', () => navigateToCheckList(checklistId, pid)));
             }
@@ -70,24 +68,24 @@ $clManager->setProj($pid);
                bounds.extend(coord);
 
                let m = new google.maps.Marker({
-                  position: coord, 
-                  map: map.mapLayer, 
-                  title: checklist.name, 
+                  position: coord,
+                  map: map.mapLayer,
+                  title: checklist.name,
                })
                const infoWin = new google.maps.InfoWindow({
                   content: `<div style=\'width:300px;\'>
-                     <b>${checklist.name}</b><br/>Double Click to open
-                  </div>` 
+                     <b>${checklist.name}</b><br/><?= $LANG['DOUBLE_CLICK'] ?>
+                  </div>`
                });
 
                infoWins.push(infoWin);
 
-               google.maps.event.addListener(m, 'click', function(e){ 
-                  closeAllInfoWins(); 
-                  infoWin.open(map.mapLayer, m); 
+               google.maps.event.addListener(m, 'click', function(e){
+                  closeAllInfoWins();
+                  infoWin.open(map.mapLayer, m);
                });
 
-               google.maps.event.addListener(m, "dblclick", function(){ 
+               google.maps.event.addListener(m, "dblclick", function(){
                  closeAllInfoWins();
                  m.setAnimation(google.maps.Animation.BOUNCE);
                  navigateToCheckList(checklistId, pid);
@@ -104,10 +102,10 @@ $clManager->setProj($pid);
                pid = data.getAttribute('data-pid');
                checklists = JSON.parse(data.getAttribute('data-checklists'));
             } catch (err) {
-               alert("Failed to load checklist data");
+               alert("<?= $LANG['FAILED_TO_LOAD'] ?>");
             }
 
-            <?php if(!empty($LEAFLET)) { ?>
+            <?php if(empty($GOOGLE_MAP_KEY)) { ?>
                leafletInit();
             <?php } else { ?>
                googleInit();
@@ -121,15 +119,21 @@ $clManager->setProj($pid);
 				margin: 0;
 				padding: 0;
 			}
+			.screen-reader-only {
+				position: absolute;
+				left: -10000px;
+			}
 		</style>
 	</head>
 	<body style="background-color:#ffffff;" onload="initialize()">
+		<?php
+		// if($shouldUseMinimalMapHeader) include_once($SERVER_ROOT . '/includes/minimalheader.php');
+		?>
+		<h1 class="page-heading screen-reader-only" style="margin-top:30px;">Checklist Map</h1>
 		<div id="map_canvas"></div>
-      <div 
-        id="service-container" 
-        class="service-container" 
-        data-checklists="<?= htmlspecialchars(json_encode($clManager->getResearchPoints()))?>"
-        data-pid="<?= htmlspecialchars($pid)?>"
-   />
+		<div id="service-container"
+			class="service-container"
+			data-checklists="<?= htmlspecialchars(json_encode($clManager->getResearchPoints()))?>"
+			data-pid="<?= $pid ?>"></div>
 	</body>
 </html>

@@ -8,6 +8,7 @@ Language: Français (French)
 include_once($SERVER_ROOT.'/content/lang/collections/list.fr.php');
 
 $LANG['COL_RESULTS'] = 'Tableau des Résultats de Recherche de Collections';
+$LANG['SEARCH_RES_TABLE'] = 'Résultats de Recherche (Tableau)';
 $LANG['SORT'] = 'Trier les Résultats';
 $LANG['SORT BY'] = 'Trier par';
 $LANG['COLLECTION'] = 'Collection';
@@ -28,5 +29,5 @@ $LANG['EDIT_REC'] = 'Modifier';
 $LANG['HAS_IMAGE'] = 'A Image';
 $LANG['CLICK_SYMB'] = "Cliquez sur l'Identifiant Symbiota dans la première colonne pour voir les détails complets de l'enregistrement";
 $LANG['NONE_FOUND'] = 'Aucun enregistrement trouvé correspondant à la requête';
-
+$LANG['SORT'] = 'Trier';
 ?>
