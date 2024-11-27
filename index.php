@@ -1,9 +1,11 @@
 <?php
 include_once('config/symbini.php');
-include_once('content/lang/index.'.$LANG_TAG.'.php');
-header("Content-Type: text/html; charset=".$CHARSET);
+if($LANG_TAG == 'en' || !file_exists($SERVER_ROOT.'/content/lang/templates/index.'.$LANG_TAG.'.php')) include_once($SERVER_ROOT.'/content/lang/templates/index.en.php');
+else include_once($SERVER_ROOT.'/content/lang/templates/index.'.$LANG_TAG.'.php');
+header('Content-Type: text/html; charset=' . $CHARSET);
 ?>
-<html>
+<!DOCTYPE html>
+<html lang="<?php echo $LANG_TAG ?>">
 <head>
 	<title><?php echo $DEFAULT_TITLE; ?> Home</title>
 	<?php
@@ -12,8 +14,8 @@ header("Content-Type: text/html; charset=".$CHARSET);
 	include_once($SERVER_ROOT.'/includes/googleanalytics.php');
 	?>
 	<link href="css/quicksearch.css" type="text/css" rel="Stylesheet" />
-	<script src="js/jquery-3.2.1.min.js" type="text/javascript"></script>
-	<script src="js/jquery-ui-1.12.1/jquery-ui.min.js" type="text/javascript"></script>
+	<script src="js/jquery-3.7.1.min.js" type="text/javascript"></script>
+	<script src="js/jquery-ui.min.js" type="text/javascript"></script>
 	<script src="js/symb/api.taxonomy.taxasuggest.js" type="text/javascript"></script>
 	<script src="js/jquery.slides.js"></script>
 </head>
@@ -136,7 +138,7 @@ header("Content-Type: text/html; charset=".$CHARSET);
 			</script>			</div>
 		</div>
 		<h1>Welcome to the EcoFloras of North America!</h1>
-		<div style="padding: 0px 10px; font-size:120%">
+		<div>
 			<p>EcoFlora is a participatory science project that aims to document, understand, and conserve urban biodiversity. First launched in 2017 at the New York Botanical Garden, the program expanded in 2020 to four additional partner gardens: Desert Botanical Garden, Denver Botanic Gardens, Marie Selby Botanical Gardens and the Chicago Botanic Garden. Visit the "Project Information" pages on each projects' tabs to learn more about each EcoFlora project!</p>
 			<p>The projects combine existing knowledge from herbaria and libraries with real-time observations of plants and their ecological partners, made using iNaturalist. These data can then be combined to learn more about the past, present, and future of urban biodiversity.</p>
 		</div>

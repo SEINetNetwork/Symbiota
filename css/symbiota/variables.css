@@ -1,14 +1,14 @@
 /* Variables
    ========================================================================== */
 :root {
-  --header-bg-image: url("../../images/layout/jonathan-borba-Ui73wdp0wok-unsplash.jpg");
-  --header-bg-color: #2f6e5378; /** Transparent color if adding header bg-image **/
+  --header-bg-image: url("../../images/layout/EcoFlorasNA_Banner_2.png");
+  --header-bg-color: ; /** Transparent color if adding header bg-image **/
   --header-font-color: #fff;
   --brand-font-size: 1.5rem;
   --title-font-family: "Averia Serif Libre", serif;
   --logo-width: 120px;
-  --menu-top-bg-color: #1b3d2f;
-  --menu-font-size: 1rem;
+  --menu-top-bg-color: #53604c;
+  --menu-font-size: 0.8rem;
   --body-bg-color: #fafafa;
   --body-text-color: #000000;
   --body-font-size: 1rem;
@@ -19,7 +19,7 @@
   --darkest-color: #1b3d2f;
   --medium-color: #5a5a53;
   --light-color: #f2f0e9;
-  --bright-color: #b9d432;
+  --bright-color: #6a99da;
   --danger-color: #b31b1b;
   --max-innertext-width: 1024px;
 }
