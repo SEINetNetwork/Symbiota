@@ -141,6 +141,9 @@ header('Content-Type: text/html; charset=' . $CHARSET);
 		<div>
 			<p>EcoFlora is a participatory science project that aims to document, understand, and conserve urban biodiversity. First launched in 2017 at the New York Botanical Garden, the program expanded in 2020 to four additional partner gardens: Desert Botanical Garden, Denver Botanic Gardens, Marie Selby Botanical Gardens and the Chicago Botanic Garden. Visit the "Project Information" pages on each projects' tabs to learn more about each EcoFlora project!</p>
 			<p>The projects combine existing knowledge from herbaria and libraries with real-time observations of plants and their ecological partners, made using iNaturalist. These data can then be combined to learn more about the past, present, and future of urban biodiversity.</p>
+			<p>This site is brought to you in collaboration with the <a href="http://symbiota.org/seinet/" target="_blank">SEINet Network</a>. 
+				When you search this portal, or any of the other SEINet portal partners, 
+				you are getting results from our one central database. The SEINet portal network contains 24 million records from over 450 collections.
 		</div>
 	</div>
 	</td>
